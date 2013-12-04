@@ -17,6 +17,7 @@ void matrixLookAtM(float *m,
                 float  upX, float  upY, float  upZ);
 void matrixMultiplyMM(float *m, float *lhs, float *rhs);
 void matrixSetProjectionM(float *m, float fov, float aspect, float znear, float zfar);
+char *gl_error_to_string(GLenum _err);
 
 #ifdef __cplusplus
 }

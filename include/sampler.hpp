@@ -10,6 +10,7 @@ class Sampler {
 		int dx, dy;
 
 		CameraSample *getSamples(int _count);
+		CameraSample *sampleForEachPixel();
 
 		void StratifiedSample2D(float *samp, int _nx, int _ny);
 };

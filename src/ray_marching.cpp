@@ -9,6 +9,7 @@
 #include "camera.hpp"
 #include "ray.hpp"
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <GL/gl.h>
 #include <CL/cl_gl.h>
@@ -16,10 +17,10 @@
 #include <vector>
 
 #define PROGRAM_FILE "ray_march.cl"
-#define WIDTH 640
-#define HEIGHT 360
-#define TXT_W 640	
-#define TXT_H 360
+#define WIDTH 1280
+#define HEIGHT 720
+#define TXT_W 40	
+#define TXT_H 40
 
 struct settings sets = {(char*)"Ray_marching",
 	SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
@@ -31,6 +32,7 @@ SDL_GLContext ctx = NULL;
 cl_program program;
 GLuint texture;
 GLuint vao;
+GLuint vao2;
 CL_Resources res;
 
 int indices[] = { 0, 1, 2, 0, 2, 3};
@@ -38,23 +40,30 @@ void interrupt(std::string, int);
 void execute_kernel(struct OpenCLHandle*);
 void init_buffers(struct OpenCLHandle*);
 
-int nSamples = 1000;
-int size;
+int nSamples = TXT_W*TXT_H;
+int iterations = 400;
+int depth = 30;
+int size, psize;
 
-GLint timeloc;
+GLint timeloc, colorloc;
+
 void initGL() {
 
 	using glm::mat4;
 	GLuint shader = create_shader((char*)"pointcloud.vert", (char*)"pointcloud.frag");
 	glUseProgram(shader);
 
-	mat4 view = glm::lookAt(vec3(2.0, 2.0, 2.0), vec3(1.f, 1.f, 1.f), vec3(0.f, 1.f, 0.f));
+	mat4 view = glm::lookAt(vec3(40.0, 20.0, 2.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
 	mat4 model = mat4(1.0);
 	mat4 projection = glm::perspective(70.f, (float)WIDTH/HEIGHT, 0.3f, 100.0f);
 	
 	GLint mv_loc = glGetUniformLocation(shader, "mv");
 	GLint mvp_loc = glGetUniformLocation(shader, "mvp");
 	timeloc = glGetUniformLocation(shader, "deltatime");
+	colorloc = glGetUniformLocation(shader, "cl");
+	if (colorloc < 0 ) {
+		interrupt("wrong shader", 0);
+	}
 	mat4 mv = view * model;
 	mat4 mvp = projection * mv;
 
@@ -103,10 +112,18 @@ void draw(float _time) {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUniform1f(timeloc, _time);
-	glBindVertexArray(vao);
 	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
-	//glUniform1f(timeloc, _time);
-	glDrawArrays(GL_POINTS, 0, size);
+	glUniform1f(timeloc, _time);
+	glm::vec4 color = glm::vec4(0.3, 0.0, 0.0, 1.0);
+	glUniform4fv(colorloc,1, &color[0]);
+	glBindVertexArray(vao);
+	glDrawArrays(GL_LINES, 0, size);
+
+	glBindVertexArray(vao2);
+	color = glm::vec4(0.0, 1.0, 1.0, 1.0);
+	glUniform4fv(colorloc,1, &color[0]);
+	glPointSize(5.0);
+	glDrawArrays(GL_POINTS, 0, psize);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 }
@@ -114,40 +131,47 @@ void draw(float _time) {
 
 
 void run() {
-	int iterations = 100;
-	int depth = 10;
-
+	
 	SDL_Window *win = setGLContext(&ctx, &sets);
 	if( win == NULL ) { printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() ); }
+
 	initOpenCLGLContext(&handle);
 
 	//init glew
 	glewExperimental = GL_TRUE;
 	GLenum gl_err =glewInit();
+	GLenum GLERR;
 	if (gl_err != GLEW_OK) {
 		perror("Couldn't initialize GLEW");
 		exit(1);
 	}  
+
 	createProgramFromSource(&handle, PROGRAM_FILE, &program);
 	res.addKernel(&program, "ray_march");
 	res.addKernel(&program, "ray_intervals");
 
 	Sampler samp(0, TXT_W, 0, TXT_H);
-	CameraSample *arr = samp.getSamples(nSamples);
+	//CameraSample *arr = samp.getSamples(nSamples);
+	CameraSample *arr = samp.sampleForEachPixel();
+	/*
 	for(int i = 0; i < nSamples; i ++) {
 		std::cout<<arr[i].imageX<< " " << arr[i].imageY <<'\n';
 	}
-	
+	*/
+
 	using glm::mat4;
-	
+
 	Film film;
 	film.xResolution = TXT_W;
 	film.yResolution = TXT_H;
 	float zfar = 100;
 	float znear = 0;
 	float screen[4] = { -TXT_W/TXT_H, TXT_W/TXT_H, -1.0f, 1.0f };
-	mat4 position =  glm::translate(0.f, 0.f, 3.f);//glm::rotate(0.f, glm::vec3(0, 1, 0)); //glm::translate(2.f, 2.f, 2.f);
-	mat4 ortho = glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
+	mat4 position =  glm::rotate(-30.f, glm::vec3(1, 0, 0)) *glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f); //// //glm::translate(2.f, 2.f, 2.f);
+	//mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
+	mat4 ortho = mat4(1.0);
+	//mat4 view = glm::lookAt(vec3(2.0, 0.0, 2.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
+
 	OrthoCamera cam(position, ortho, screen, &film);
 
 	Ray *rays = (Ray*) ::operator new (sizeof(Ray[nSamples]));
@@ -155,8 +179,8 @@ void run() {
 	cl_float3 dir[nSamples];
 	for(int i = 0; i< nSamples; i++) {
 		cam.generateRay(arr[i], &rays[i]);
-		std::cout<<rays[i].m_point.x<< " " <<rays[i].m_point.y<< " " <<rays[i].m_point.z<<'\n';
-		std::cout<<rays[i].m_dir.x<< " " <<rays[i].m_dir.y<<" " <<rays[i].m_dir.z<<'\n';
+		std::cout<<"ray start "<<rays[i].m_point.x<< " " <<rays[i].m_point.y<< " " <<rays[i].m_point.z<<'\n';
+		std::cout<<"ray dir "<< rays[i].m_dir.x<< " " <<rays[i].m_dir.y<<" " <<rays[i].m_dir.z<<'\n';
 		from[i].x = rays[i].m_point.x;
 		from[i].y = rays[i].m_point.y;
 		from[i].z = rays[i].m_point.z;
@@ -165,19 +189,17 @@ void run() {
 		dir[i].z = rays[i].m_dir.z;
 	}
 
-
 	cl_int err;
-	cl_mem *from_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(vec3)*nSamples, NULL, &err)); 
+	cl_mem *from_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(cl_float3)*nSamples, NULL, &err)); 
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
 	res.addMemObj(from_buf, "from_buf");
-	err = clEnqueueWriteBuffer(handle.queue, *from_buf, CL_FALSE, 0, sizeof(vec3)*nSamples, from,  0, NULL, NULL);
+	err = clEnqueueWriteBuffer(handle.queue, *from_buf, CL_FALSE, 0, sizeof(cl_float3)*nSamples, &from[0],  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Write Buffer: ", err);
 
-
-	cl_mem *dir_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(vec3)*nSamples, NULL, &err)); 
+	cl_mem *dir_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(cl_float3)*nSamples, NULL, &err)); 
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
 	res.addMemObj(dir_buf, "dir_buf");
-	err = clEnqueueWriteBuffer(handle.queue, *dir_buf, CL_FALSE, 0, sizeof(vec3)*nSamples, dir,  0, NULL, NULL);
+	err = clEnqueueWriteBuffer(handle.queue, *dir_buf, CL_FALSE, 0, sizeof(cl_float3)*nSamples, &dir[0],  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Write Buffer: ", err);
 
 	cl_mem *result_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(cl_float)*nSamples*iterations, NULL, &err)); 
@@ -200,24 +222,35 @@ void run() {
 	size_t worksize = nSamples;
 	err = clEnqueueNDRangeKernel(handle.queue, *res.getKernel("ray_intervals"), 1, NULL, &worksize, NULL, 0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Kernel", err);
-	
-	float array[nSamples*iterations];
-	err = clEnqueueReadBuffer(handle.queue, *result_buf, CL_FALSE, 0, sizeof(cl_float)*nSamples*iterations, array,  0, NULL, NULL);
 	clFinish(handle.queue);
+
+	float *array = new float[nSamples*iterations];
+
+	err = clEnqueueReadBuffer(handle.queue, *result_buf, CL_FALSE, 0, sizeof(cl_float)*nSamples*iterations, array,  0, NULL, NULL);
+	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
+
+	clFinish(handle.queue);
+	std::vector<float> ray_data;
 	std::vector<float> points;
 
-	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
+
 	for(int i = 0; i< nSamples; i++) {
-		for (int k = 0; k < iterations -1; k++) {
-			if( array[i*iterations+k] * array[i*iterations+k+1] <= 0) {
+		cl_float3 from_vec = from[i];
+		cl_float3 dir_vec = dir[i];
+		std::cout<<"from vec " <<from_vec.x << " " << from_vec.y << " " << from_vec.z <<'\n';
+		std::cout<<"dir vec " <<dir_vec.x << " " << dir_vec.y << " " << dir_vec.z <<'\n';
+		cl_float3 temp2 = { dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth };
+		cl_float3 end_p = { from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z };  
+		ray_data.push_back(from_vec.x);
+		ray_data.push_back(from_vec.y);
+		ray_data.push_back(from_vec.z);
+		ray_data.push_back(end_p.x); 
+		ray_data.push_back(end_p.y); 
+		ray_data.push_back(end_p.z); 
+		for (int k = 0; k < iterations; k++) {
+			if( array[i*iterations+k] * array[i*iterations+k+1] <= 0 ) {
 				std::cout<<array[i*iterations+k] << " "<< array[i*iterations+k+1] << '\n';
-				std::cout<<i*iterations+k<<'\n';
-				int step_id =  k;// (i*iterations+k) % iterations ;
-				std::cout<<step_id<<" " << i <<'\n';
-				cl_float3 from_vec = from[i];
-				cl_float3 dir_vec = dir[i];
-				cl_float3 temp2 = { dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth };
-				cl_float3 end_p = { from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z };  
+				int step_id = k;// (i*iterations+k) % iterations ;
 				cl_float3 temp =  { end_p.x - from_vec.x, end_p.y - from_vec.y , end_p.z - from_vec.z };
 				float length = sqrt(temp.x*temp.x + temp.y*temp.y + temp.z*temp.z);
 				float step = length / iterations;
@@ -226,26 +259,46 @@ void run() {
 				points.push_back(final_p.y); 
 				points.push_back(final_p.z); 
 				//std::cout<<final_p.x << " " << final_p.y << " " << final_p.z <<'\n';
-
 			}
+			/*
+			   else {
+			   }
+			   */
 		}
 	}
+	delete[] array;
 	//res.release();
-	GLuint VBO_ID;
-	size = points.size();
 
-	GLenum GLERR;
 	glGenVertexArrays(1, &vao);
+	glGenVertexArrays(1, &vao2);
+	/*
+	   GLERR = glGetError();
+	   if(GLERR != GL_NO_ERROR) {
+	   std::cout<<"perrkkkele" <<gl_error_to_string(GLERR)<<'\n';
+	//interrupt("GL ERROR", -1);
+	}
+	*/
+	GLuint VBO_ID, VBO_ID2;
+
 	glBindVertexArray(vao);
 	glGenBuffers(1, &VBO_ID); 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO_ID);	
-	GLERR = glGetError();
-	if(GLERR != GL_NO_ERROR) {
-		std::cout<<"perrkkkele" <<GLERR<<'\n';
-	}	
-	glBufferData(GL_ARRAY_BUFFER, size*sizeof(float), &points, GL_DYNAMIC_DRAW);
-	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
-	//glEnableVertexAttribArray(0);
+	size = ray_data.size();
+	glBufferData(GL_ARRAY_BUFFER, size*sizeof(float), &ray_data[0], GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
+	glEnableVertexAttribArray(0);
+
+	
+	glBindVertexArray(vao2);
+	glGenBuffers(1, &VBO_ID2); 
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_ID2);	
+	psize = points.size();
+	glBufferData(GL_ARRAY_BUFFER, psize*sizeof(float), &points[0], GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
+	glEnableVertexAttribArray(0);
+	glBindVertexArray(0);
+
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	//init_buffers(&handle);
 	//execute_kernel(&handle);

@@ -41,6 +41,18 @@ CameraSample *Sampler::getSamples(int _count) {
 	return array;
 }
 
+CameraSample *Sampler::sampleForEachPixel() {
+	CameraSample *array = new CameraSample[dx*dy];
+	float sampleBuf[dx*dy*2];
+	StratifiedSample2D(sampleBuf, dx, dy);
+	for(int i = 0; i < dx*dy; i++) {
+		array[i].imageX = sampleBuf[2*i];
+		array[i].imageY = sampleBuf[2*i+1];
+	}
+	return array;
+
+}
+
 void Sampler::StratifiedSample2D(float *samp, int _nx, int _ny) {
 	//float dx = 1.f/nx, dy = 1.f / ny;
 	for(int y = 0; y < _ny; y++) {

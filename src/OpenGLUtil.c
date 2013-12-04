@@ -188,3 +188,20 @@ void matrixSetProjectionM(float *m, float fov, float aspect,
 		m[14] = 2.0f*(znear*zfar)/neg_depth;
 		m[15] = 0;
 }
+char *gl_error_to_string(GLenum _err) {
+
+	char *error;
+
+	switch(_err) {
+		case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
+		case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
+		case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
+		case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
+		case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
+		default: error="NO_PROBLEM"; break;
+	}
+
+	//cerr << "GL_" << error.c_str() <<" - "<<file<<":"<<line<<endl;
+	return error;
+}
+
