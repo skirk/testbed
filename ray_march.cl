@@ -352,23 +352,21 @@ bool CheckInBounds(float3 pos)
 
 
 __kernel void ray_intervals(
-		__global float3 *from_buf,
-		__global float3 *dir_buf,
+		__global float3 *rays,
 		__private int depth,
 		__private int iterations,
 		__global float *result) {
 
 
-	float3 ray_start = from_buf[get_global_id(0)];
-	float3 ray_dir = dir_buf[get_global_id(0)];
+	float3 ray_start = rays[get_global_id(0)*2];
+	float3 ray_dir =   rays[get_global_id(0)*2+1];
 	float3 ray_end = ray_start + ray_dir*depth;
 
 	float step = length((ray_end - ray_start))/iterations;
 
 	for(int i = 0; i < iterations; i++) {
 		float value = FUNCTION(ray_start+ ray_dir*i*step );
-		result[get_global_id(0)*iterations + i] = value; //(float3)(get_global_id(0), 0.0, 0.0);
-	//result[get_global_id(0)*2 +1] = ray_dir; //(float3)(get_global_id(0), 0.0, 0.0);
+		result[get_global_id(0)*iterations + i] = value; 
 	}
 }
 
