@@ -55,7 +55,7 @@ void initGL() {
 	GLuint shader = create_shader((char*)"pointcloud.vert", (char*)"pointcloud.frag");
 	glUseProgram(shader);
 
-	mat4 view = glm::lookAt(vec3(40.0, 20.0, 2.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
+	mat4 view = glm::lookAt(vec3(40.0, 10.0, 2.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
 	mat4 model = mat4(1.0);
 	mat4 projection = glm::perspective(70.f, (float)WIDTH/HEIGHT, 0.3f, 100.0f);
 	
@@ -193,7 +193,7 @@ void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *
 		_raydata->push_back(vec3(from_vec.x, from_vec.y, from_vec.z));
 		_raydata->push_back(vec3(end_p.x, end_p.y, end_p.z));
 
-		for (int k = 0; k < iterations; k++) {
+		for (int k = 0; k < iterations-1; k++) {
 			if( _intervals[i*iterations+k] * _intervals[i*iterations+k+1] <= 0 ) {
 				//std::cout<<[i*iterations+k] << " "<< array[i*iterations+k+1] << '\n';
 				int step_id = k;// (i*iterations+k) % iterations ;
@@ -245,7 +245,7 @@ void generate_rays( const int _width, const int _height) {
 	//float zfar = 100;
 	//float znear = 0;
 	float screen[4] = { -_width/_height, _width/_height, -1.0f, 1.0f };
-	mat4 position = /* glm::rotate(0.f, glm::vec3(1, 0, 0))*/glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f); //// //glm::translate(2.f, 2.f, 2.f);
+	mat4 position =  glm::rotate(-30.f, glm::vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f); //// //glm::translate(2.f, 2.f, 2.f);
 	mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
 
 	OrthoCamera cam(position, ortho, screen, &film);
@@ -300,118 +300,9 @@ void init_buffers(struct OpenCLHandle *_handle, int _n_samples, int _iterations)
 }
 
 
-
-
-/*
-   void init_buffers(struct OpenCLHandle *_handle) {
-
-   cl_int err;
-   cl_image_format format;
-   format.image_channel_order = CL_RGBA;
-//cl_mem *from_buf = new cl_mem( clCreateImage2D(_handle->context, CL_MEM_READ_ONLY, &format, (size_t)TXT_W, (size_t)TXT_H, 0, 0, &err));
-
-
-float from[TXT_W*TXT_H][3];
-float to[TXT_W*TXT_H][3];
-for(int i = 0; i < TXT_W * TXT_H; i++) {
-from[i][0] = to[i][0] = (2/TXT_W)*i - 1;
-from[i][1] = to[i][1] = (2/TXT_H)*i - 1;
-from[i][2] = 1;
-to[i][2] = -1;
-}
-
-cl_mem *from_buf = new cl_mem(clCreateBuffer(_handle->context, CL_MEM_READ_ONLY, sizeof(float)*10000, NULL, &err)); 
-if(err < 0) interrupt("Unable to Create Memory Object ", err);
-res.addMemObj(from_buf, "from_buf");
-//cl_mem *to_buf = new cl_mem( clCreateImage2D(_handle->context, CL_MEM_READ_ONLY, &format, (size_t)TXT_W, (size_t)TXT_H, 0, 0, &err));
-cl_mem *to_buf = new cl_mem(clCreateBuffer(_handle->context, CL_MEM_READ_ONLY, sizeof(cl_mem), NULL, &err)); 
-if(err < 0) interrupt("Unable  to Create Memory Object ", err);
-res.addMemObj(to_buf, "to_buf");
-
-glGenTextures(1, &texture);
-glBindTexture(GL_TEXTURE_2D, texture);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (int)TXT_W, (int)TXT_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-glBindTexture(GL_TEXTURE_2D, 0);
-
-
-cl_mem *img_data = new cl_mem( clCreateFromGLTexture2D(_handle->context, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, texture, &err));
-if(err < 0) interrupt("Unable to create from GL buffer: ", err);
-res.addMemObj(img_data, "img_data");
-
-}
-
-
-void execute_kernel(struct OpenCLHandle *_handle) {
-
-cl_int err;
-int iteration = 512;
-err = clSetKernelArg(*res.getKernel("ray_march"), 0, sizeof(cl_mem), res.getMemObj("from_buf"));
-if(err < 0) interrupt("Unable to set kernel argument ", err);
-err = clSetKernelArg(*res.getKernel("ray_march"), 1, sizeof(cl_mem), res.getMemObj("to_buf"));
-//if(err < 0) interrupt("Unable to set kernel argument ", err);
-err = clSetKernelArg(*res.getKernel("ray_march"), 0, sizeof(int), &iteration);
-if(err < 0) interrupt("Unable to set kernel argument ", err);
-err = clSetKernelArg(*res.getKernel("ray_march"), 1, sizeof(cl_mem), res.getMemObj("img_data"));
-if(err < 0) interrupt("Unable to set kernel argument ", err);
-
-err = clEnqueueAcquireGLObjects(_handle->queue, 1, res.getMemObj("img_data"), 0, NULL, NULL);
-if(err < 0) interrupt("Couldn't acquire GL objects ", err);
-
-err = clEnqueueNDRangeKernel(_handle->queue, *res.getKernel("ray_march"), 2, NULL, (size_t[]){TXT_W, TXT_H}, NULL, 0, NULL, NULL);
-if(err < 0) interrupt("Unable to enqueue kernel ", err);
-clFinish(_handle->queue);
-}
-
-*/
-
 void interrupt(std::string _errormessage, int _errorcode) {
 	std::cout<<_errormessage<<" "<<getCLErrorString(_errorcode)<<'\n';
 	res.release();
 	exit(1);
 }
-
-/*
-   timeloc = glGetUniformLocation(shader, "deltatime");
-   GLint model_loc = glGetUniformLocation(shader, "mv");
-   GLint norm_loc = glGetUniformLocation(shader, "norm_mat");
-   GLint mvp_loc = glGetUniformLocation(shader, "mvp");
-
-
-   float model[16];
-   float view[16];
-   float mv[16];
-   float mvp[16];
-   float projection[16];
-
-   matrixSetIdentityM( model);
-   matrixSetIdentityM( projection);
-
-   matrixLookAtM(view,
-   50, 20, 0.0, //from
-   0.0, 0.0, 0.0, //to
-   0.0, 1.0, 0.0); //up
-
-
-
-   matrixMultiplyMM(mv, view, model);
-   glUniformMatrix4fv(model_loc, 1, GL_FALSE, mv); 
-
-   float normal[9] =
-   { mv[0], mv[1], mv[2], 
-   mv[4], mv[5], mv[6],
-   mv[8], mv[9], mv[10] };
-
-   glUniformMatrix3fv(norm_loc, 1, GL_FALSE, normal);
-
-   matrixSetProjectionM(projection, 60.0, (float)HEIGHT/WIDTH, 0.01f, 120.0f);
-
-   matrixMultiplyMM(mvp, projection, mv);
-   glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, mvp); 
-
-   glBindBuffer(GL_ARRAY_BUFFER, VBO_ID[0]);
-   glEnable(GL_DEPTH_TEST);
-   */
 

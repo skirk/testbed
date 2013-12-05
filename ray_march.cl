@@ -363,10 +363,21 @@ __kernel void ray_intervals(
 	float3 ray_end = ray_start + ray_dir*depth;
 
 	float step = length((ray_end - ray_start))/iterations;
+	
+	bool posFound = false; 
 
 	for(int i = 0; i < iterations; i++) {
-		float value = FUNCTION(ray_start+ ray_dir*i*step );
-		result[get_global_id(0)*iterations + i] = value; 
+		if (posFound)
+		{
+			result[get_global_id(0)*iterations + i] = 1.0f; 
+		}
+		else
+		{
+			float value = FUNCTION(ray_start+ ray_dir*i*step );
+			if (value > 0) posFound = true;
+
+			result[get_global_id(0)*iterations + i] = value; 
+		}
 	}
 }
 

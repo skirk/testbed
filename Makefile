@@ -10,7 +10,7 @@ SRCDIR = src
 OBJDIR = obj
 
 LDFLAGS= $(shell sdl2-config --libs) \
-	-L/usr/lib64/nvidia/ -lOpenCL -lGL -lGLEW
+	-L/usr/lib64/nvidia/ -lOpenCL -lGL -lGLEW -lSDL2_ttf
 
 INCLUDEPATH = -I./include/ $(shell sdl2-config --cflags) -I/opt/cuda/include/
 SRCS := $(shell find $(SRCDIR) -name '*.cpp')
