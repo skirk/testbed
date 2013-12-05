@@ -37,14 +37,12 @@ CL_Resources res;
 
 int indices[] = { 0, 1, 2, 0, 2, 3};
 void interrupt(std::string, int);
-float *execute_kernel(struct OpenCLHandle*);
-void init_buffers(struct OpenCLHandle*);
-void generate_rays();
+void generate_intervals(struct OpenCLHandle*, std::vector<float> *_intervals, int _nSamples, int _iterations);
+void init_buffers(struct OpenCLHandle*, int, int);
+void generate_rays(const int, const int);
 void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata);
-void analyse_intervals(float *_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata); 
+void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata); 
 
-int nSamples = TXT_W*TXT_H;
-int iterations = 400;
 int depth = 30;
 int size, psize;
 
@@ -134,7 +132,7 @@ void draw(float _time) {
 
 
 
-void run() {
+void run(int _tex_w, int _tex_h, int _n_inters) {
 	
 	SDL_Window *win = setGLContext(&ctx, &sets);
 	if( win == NULL ) { printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() ); }
@@ -154,13 +152,15 @@ void run() {
 	res.addKernel(&program, "ray_march");
 	res.addKernel(&program, "ray_intervals");
 
-	generate_rays();
+	generate_rays(_tex_w, _tex_h);
 
 
-	init_buffers(&handle);
-	float *intervals = execute_kernel(&handle);
+	init_buffers(&handle, _tex_w*_tex_h, _n_inters);
+	std::vector<float> intervals;
+	generate_intervals(&handle, &intervals, _tex_w*_tex_h, _n_inters);
 
 	std::vector<vec3> raydata;
+	raydata.resize(_tex_w*_tex_h);
 	std::vector<vec3> pointdata;
        	analyse_intervals(intervals, &raydata, &pointdata);
 	
@@ -178,10 +178,11 @@ void run() {
 	mainloop(win, &initGL, &draw);
 }
 
-void analyse_intervals(float *_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata) {
+void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata) {
 
-
-	for(int i = 0; i< nSamples; i++) {
+	int samples = _raydata->size();
+	int iterations = _intervals.size()/samples;
+	for(int i = 0; i< samples; i++) {
 		cl_float3 from_vec =rays[i].m_point; //from[i];
 		cl_float3 dir_vec = rays[i].m_dir; //dir[i];
 		//std::cout<<"from vec " <<from_vec.x << " " << from_vec.y << " " << from_vec.z <<'\n';
@@ -233,71 +234,69 @@ void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> 
 
 }
 
-void generate_rays() {
+void generate_rays( const int _width, const int _height) {
 
-	Sampler samp(0, TXT_W, 0, TXT_H);
-	//CameraSample *arr = samp.getSamples(nSamples);
+	Sampler samp(0, _width, 0, _height);
 	CameraSample *arr = samp.sampleForEachPixel();
 	using glm::mat4;
 	Film film;
-	film.xResolution = TXT_W;
-	film.yResolution = TXT_H;
+	film.xResolution = _width;
+	film.yResolution = _height;
 	//float zfar = 100;
 	//float znear = 0;
-	float screen[4] = { -TXT_W/TXT_H, TXT_W/TXT_H, -1.0f, 1.0f };
+	float screen[4] = { -_width/_height, _width/_height, -1.0f, 1.0f };
 	mat4 position = /* glm::rotate(0.f, glm::vec3(1, 0, 0))*/glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f); //// //glm::translate(2.f, 2.f, 2.f);
 	mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
 
 	OrthoCamera cam(position, ortho, screen, &film);
 
-	rays.reserve(nSamples);
-	for(int i = 0; i< nSamples; i++) {
+
+	rays.reserve(_width*_height);
+	for(int i = 0; i< _width*_height; i++) {
 		cam.generateRay(arr[i], &rays[i]);
 	}
 }
 
-float *execute_kernel(struct OpenCLHandle *_handle) {
+void generate_intervals(struct OpenCLHandle *_handle, std::vector<float> *_intervals, int _nSamples, int _iterations) {
 
 	cl_int err;
 	err = clSetKernelArg(*res.getKernel("ray_intervals"), 0, sizeof(cl_mem), res.getMemObj("from_buf"));
 	if(err < 0) interrupt("Unable to set kernel argument 0 ", err);
 	err = clSetKernelArg(*res.getKernel("ray_intervals"), 1, sizeof(int), &depth);
 	if(err < 0) interrupt("Unable to set kernel argument 1 ", err);
-	err = clSetKernelArg(*res.getKernel("ray_intervals"), 2, sizeof(int), &iterations);
+	err = clSetKernelArg(*res.getKernel("ray_intervals"), 2, sizeof(int), &_iterations);
 	if(err < 0) interrupt("Unable to set kernel argument 2", err);
 	err = clSetKernelArg(*res.getKernel("ray_intervals"), 3, sizeof(cl_mem), res.getMemObj("result_buf"));
 	if(err < 0) interrupt("Unable to set kernel argument 3", err);
-	cl_mem *asd = res.getMemObj("result_buf");
 
-	size_t worksize = nSamples;
+	size_t worksize = _nSamples;
 	err = clEnqueueNDRangeKernel(handle.queue, *res.getKernel("ray_intervals"), 1, NULL, &worksize, NULL, 0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Kernel", err);
 	clFinish(handle.queue);
 
-	float *values = new float[nSamples*iterations];
-
-	err = clEnqueueReadBuffer(handle.queue, *asd, CL_FALSE, 0, sizeof(cl_float)*nSamples*iterations, values,  0, NULL, NULL);
+	_intervals->resize(_nSamples*_iterations);
+	err = clEnqueueReadBuffer(handle.queue, *res.getMemObj("result_buf"), CL_FALSE, 0, sizeof(cl_float)*_nSamples*_iterations, &(*_intervals)[0],  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
 	clFinish(handle.queue);
-
-	return values;
+	std::cout<<"intervals generated\n";
 
 }
 
 
 
-void init_buffers(struct OpenCLHandle *_handle) {
+void init_buffers(struct OpenCLHandle *_handle, int _n_samples, int _iterations) {
 
 	cl_int err;
-	cl_mem *from_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(Ray)*nSamples, NULL, &err)); 
+	cl_mem *from_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(Ray)*_n_samples, NULL, &err)); 
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
 	res.addMemObj(from_buf, "from_buf");
-	err = clEnqueueWriteBuffer(handle.queue, *from_buf, CL_FALSE, 0, sizeof(Ray)*nSamples, &rays[0],  0, NULL, NULL);
+	err = clEnqueueWriteBuffer(handle.queue, *from_buf, CL_FALSE, 0, sizeof(Ray)*_n_samples, &rays[0],  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Write Buffer: ", err);
 	clFinish(handle.queue);
-	cl_mem *result_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(cl_float)*nSamples*iterations, NULL, &err)); 
+	cl_mem *result_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(cl_float)*_n_samples*_iterations, NULL, &err)); 
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
 	res.addMemObj(result_buf, "result_buf");
+	std::cout<<"buffers initialised\n";
 }
 
 

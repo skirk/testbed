@@ -40,8 +40,6 @@ float OrthoCamera::generateRay(const CameraSample &sample, Ray *ray) {
 				  1 - 2 * (sample.imageY + 0.5 ) / m_film->yResolution,
 				  0.f, 1.f);
 
-	std::cout<<"cameraspace: " <<glm::to_string(cameraspace)<<'\n';
-
 	//glm::mat4 scale2 = glm::scale( (2.f - 1.f/normalized.x)  /*(float)tan(angle/2.f * M_PI /180) */ , (1.f/normalized.y - 2.f)  /*(float)tan(angle/2.f * M_PI / 180)*/, 1.f);
 	//vec4 cameraspace = normalized * scale2;
 	//std::cout<<glm::to_string(CameraToWorld)<<'\n';
