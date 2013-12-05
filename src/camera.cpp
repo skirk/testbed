@@ -28,7 +28,7 @@ ProjectiveCamera::ProjectiveCamera(const mat4 &_cam2world, const mat4 &_proj, co
 void ChangeBasis(const mat4 &_matrix, const vec3 &pt, vec3 *_target);
 
 using glm::vec4;
-float OrthoCamera::generateRay(const CameraSample &sample, Ray *ray) {
+float OrthoCamera::generateRay(const CameraSample &sample, Ray *ray) const {
 	vec3 Pras(sample.imageX, sample.imageY, 0);
 	vec3 Pcamera;
 	float angle = 60;

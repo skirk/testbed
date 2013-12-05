@@ -34,7 +34,7 @@ SDL_Window *setGLContext(SDL_GLContext *_ctx, struct settings *_settings)
 	dump_sdl_error( );
 
 	gl_info( );
-	
+
 	return window;
 }
 
@@ -48,27 +48,27 @@ void mainloop(SDL_Window *_win,void (*init_function)(), void (*draw_function)(fl
 	float fps =0.f;
 
 	/*
-	if (_win == NULL) {
-		printf("Something went wrong");
-	}
+	   if (_win == NULL) {
+	   printf("Something went wrong");
+	   }
 
-	if(TTF_Init()==-1) {
-		printf("TTF_INIT: %s\n", TTF_GetError());
-		exit(2);
-	}
-	TTF_Font *font;
-	font=TTF_OpenFont("CircleOfDust.ttf", 16);
-	if(!font) {
-		printf("TTF_OpenFont: %s\n", TTF_GetError());
-	}
-	SDL_Color color={0,0,0};
-	SDL_Surface *text_surface;
-	if(!(text_surface=TTF_RenderText_Solid(font,"Hello World!",color))) {
-		//handle error here, perhaps print TTF_GetError at least
+	   if(TTF_Init()==-1) {
+	   printf("TTF_INIT: %s\n", TTF_GetError());
+	   exit(2);
+	   }
+	   TTF_Font *font;
+	   font=TTF_OpenFont("CircleOfDust.ttf", 16);
+	   if(!font) {
+	   printf("TTF_OpenFont: %s\n", TTF_GetError());
+	   }
+	   SDL_Color color={0,0,0};
+	   SDL_Surface *text_surface;
+	   if(!(text_surface=TTF_RenderText_Solid(font,"Hello World!",color))) {
+	//handle error here, perhaps print TTF_GetError at least
 	} else {
-		SDL_BlitSurface(text_surface,NULL,,NULL);
-		//perhaps we can reuse it, but I assume not for simplicity.
-		SDL_FreeSurface(text_surface);
+	SDL_BlitSurface(text_surface,NULL,,NULL);
+	//perhaps we can reuse it, but I assume not for simplicity.
+	SDL_FreeSurface(text_surface);
 	}
 	*/
 
@@ -86,10 +86,11 @@ void mainloop(SDL_Window *_win,void (*init_function)(), void (*draw_function)(fl
 		thisTime  = SDL_GetTicks();
 		deltaTime = (float)(thisTime-lastTime) / 1000;
 
-		if(thisTime % 1000 - 970 > 0)
+		if(thisTime % 1000 - 970 > 0) {
 			fps = (float)1.f/deltaTime;
 			sprintf(title, "FPS %f", fps);
 			SDL_SetWindowTitle(_win, title);
+		}
 		lastTime = thisTime;
 
 
@@ -116,7 +117,7 @@ void gl_info( void )
 {
 	const char* renderer     = (const char*) glGetString(GL_RENDERER);
 	const char* version      = (const char*) glGetString(GL_VERSION);
-	const char* glsl_version = (const cha glGetString(GL_SHADING_LANGUAGE_VERSION);
+	const char* glsl_version = (const char*) glGetString(GL_SHADING_LANGUAGE_VERSION);
 
 	fprintf( stdout, "[GL] Renderer: %s\n", renderer ? renderer : "unknown" );
 	fprintf( stdout, "[GL] Version: %s\n", version ? version : "unknown" );

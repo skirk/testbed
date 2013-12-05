@@ -13,14 +13,14 @@ class Camera {
 	public:
 		Camera(const mat4 &_cam2world, Film *_film)
 			: CameraToWorld(_cam2world), m_film(_film) {};
-		virtual float generateRay(const CameraSample &sample, Ray *ray) = 0;
+		virtual float generateRay(const CameraSample &sample, Ray *ray) const = 0;
 
 	protected:
 		mat4 CameraToWorld;
 		Film *m_film;
 };
 
-class ProjectiveCamera : protected Camera {
+class ProjectiveCamera : public Camera {
 	public: 
 		ProjectiveCamera(const mat4 &_cam2world, const mat4 &_proj, const float ScreenWindow[4], Film *_film);
 	protected:
@@ -31,13 +31,13 @@ class ProjectiveCamera : protected Camera {
 };
 
 
-class OrthoCamera : protected ProjectiveCamera {
+class OrthoCamera : public ProjectiveCamera {
 
 	public:
 		OrthoCamera(const mat4 &_cam2world, const mat4 &_proj, const float ScreenWindow[4], Film *_film)
 			: ProjectiveCamera(_cam2world, _proj, ScreenWindow, _film) {}
 
-		float generateRay(const CameraSample &sample, Ray *ray);
+		float generateRay(const CameraSample &sample, Ray *ray) const;
 	private:
 
 };

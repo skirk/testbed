@@ -19,8 +19,6 @@
 #define PROGRAM_FILE "ray_march.cl"
 #define WIDTH 1280
 #define HEIGHT 720
-#define TXT_W 60	
-#define TXT_H 60
 
 struct settings sets = {(char*)"Ray_marching",
 	SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
@@ -35,11 +33,10 @@ GLuint vao;
 GLuint vao2;
 CL_Resources res;
 
-int indices[] = { 0, 1, 2, 0, 2, 3};
 void interrupt(std::string, int);
 void generate_intervals(struct OpenCLHandle*, std::vector<float> *_intervals, int _nSamples, int _iterations);
 void init_buffers(struct OpenCLHandle*, int, int);
-void generate_rays(const int, const int);
+void generate_rays(CameraSample *, const Camera&, const int, const int);
 void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata);
 void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata); 
 
@@ -71,40 +68,6 @@ void initGL() {
 
 	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &mvp[0][0]); 
 	glUniformMatrix4fv(mv_loc, 1, GL_FALSE, &mv[0][0]); 
-	//GLint textureLoc = glGetUniformLocation(shader, "diffuseTex");
-	//glUniform1i(textureLoc, 0);
-	
-	
-	/*
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	GLuint VBOs[3];
-	float pos[] = {
-		-1.0f,  -1.0f,
-		-1.0f,  1.0f,
-		1.0f,  1.0f,
-		1.0f, -1.0f};
-	float uv[] = {
-		0.0f, 0.0f,
-		0.0f, 1.0f,
-		1.0f, 1.0f,
-		1.0f, 0.0f};
-	glGenBuffers(3, VBOs);
-	glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*8, pos, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*8, uv, GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-	*/
-
-	/*
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBOs[2]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(char)*6, indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	*/
 
 
 }
@@ -122,9 +85,9 @@ void draw(float _time) {
 	glDrawArrays(GL_LINES, 0, size);
 
 	glBindVertexArray(vao2);
-	color = glm::vec4(0.0, 1.0, 1.0, 1.0);
+	color = glm::vec4(0.0, 0.6, 0.6, 1.0);
 	glUniform4fv(colorloc,1, &color[0]);
-	glPointSize(5.0);
+	glPointSize(3.0);
 	glDrawArrays(GL_POINTS, 0, psize);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -133,6 +96,8 @@ void draw(float _time) {
 
 
 void run(int _tex_w, int _tex_h, int _n_inters) {
+	using glm::mat4;
+	using glm::vec3;
 	
 	SDL_Window *win = setGLContext(&ctx, &sets);
 	if( win == NULL ) { printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() ); }
@@ -142,17 +107,28 @@ void run(int _tex_w, int _tex_h, int _n_inters) {
 	//init glew
 	glewExperimental = GL_TRUE;
 	GLenum gl_err =glewInit();
-	GLenum GLERR;
 	if (gl_err != GLEW_OK) {
 		perror("Couldn't initialize GLEW");
 		exit(1);
 	}  
 
 	createProgramFromSource(&handle, PROGRAM_FILE, &program);
-	res.addKernel(&program, "ray_march");
 	res.addKernel(&program, "ray_intervals");
 
-	generate_rays(_tex_w, _tex_h);
+	Sampler samp(0, _tex_w, 0, _tex_h);
+	Film film;
+	film.xResolution = _tex_w;
+	film.yResolution = _tex_h;
+	float screen[4] = { -_tex_w/_tex_h, _tex_w/_tex_h, -1.0f, 1.0f };
+	mat4 position =  glm::rotate(-30.f, vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f);
+	mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
+
+	OrthoCamera cam(position, ortho, screen, &film);
+	CameraSample *arr = samp.sampleForEachPixel();
+
+
+	generate_rays(arr, cam, _tex_w, _tex_h);
+
 
 
 	init_buffers(&handle, _tex_w*_tex_h, _n_inters);
@@ -162,8 +138,8 @@ void run(int _tex_w, int _tex_h, int _n_inters) {
 	std::vector<vec3> raydata;
 	raydata.resize(_tex_w*_tex_h);
 	std::vector<vec3> pointdata;
-       	analyse_intervals(intervals, &raydata, &pointdata);
-	
+	analyse_intervals(intervals, &raydata, &pointdata);
+
 	init_gl_buffers(raydata, pointdata);
 
 	//res.release();
@@ -187,8 +163,8 @@ void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *
 		cl_float3 dir_vec = rays[i].m_dir; //dir[i];
 		//std::cout<<"from vec " <<from_vec.x << " " << from_vec.y << " " << from_vec.z <<'\n';
 		//std::cout<<"dir vec " <<dir_vec.x << " " << dir_vec.y << " " << dir_vec.z <<'\n';
-		cl_float3 temp2 = { dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth };
-		cl_float3 end_p = { from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z };  
+		cl_float3 temp2 = {{ dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth }};
+		cl_float3 end_p = {{ from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z }};  
 
 		_raydata->push_back(vec3(from_vec.x, from_vec.y, from_vec.z));
 		_raydata->push_back(vec3(end_p.x, end_p.y, end_p.z));
@@ -197,10 +173,10 @@ void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *
 			if( _intervals[i*iterations+k] * _intervals[i*iterations+k+1] <= 0 ) {
 				//std::cout<<[i*iterations+k] << " "<< array[i*iterations+k+1] << '\n';
 				int step_id = k;// (i*iterations+k) % iterations ;
-				cl_float3 temp =  { end_p.x - from_vec.x, end_p.y - from_vec.y , end_p.z - from_vec.z };
+				cl_float3 temp =  {{ end_p.x - from_vec.x, end_p.y - from_vec.y , end_p.z - from_vec.z }};
 				float length = sqrt(temp.x*temp.x + temp.y*temp.y + temp.z*temp.z);
 				float step = length / iterations;
-				cl_float3 final_p = { from_vec.x + dir_vec.x*step*step_id, from_vec.y + dir_vec.y*step*step_id, from_vec.z + dir_vec.z*step*step_id};
+				cl_float3 final_p ={{ from_vec.x + dir_vec.x*step*step_id, from_vec.y + dir_vec.y*step*step_id, from_vec.z + dir_vec.z*step*step_id}};
 				_pointdata->push_back(vec3(final_p.x, final_p.y, final_p.z)); 
 				//std::cout<<final_p.x << " " << final_p.y << " " << final_p.z <<'\n';
 			}
@@ -234,26 +210,10 @@ void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> 
 
 }
 
-void generate_rays( const int _width, const int _height) {
-
-	Sampler samp(0, _width, 0, _height);
-	CameraSample *arr = samp.sampleForEachPixel();
-	using glm::mat4;
-	Film film;
-	film.xResolution = _width;
-	film.yResolution = _height;
-	//float zfar = 100;
-	//float znear = 0;
-	float screen[4] = { -_width/_height, _width/_height, -1.0f, 1.0f };
-	mat4 position =  glm::rotate(-30.f, glm::vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f); //// //glm::translate(2.f, 2.f, 2.f);
-	mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
-
-	OrthoCamera cam(position, ortho, screen, &film);
-
-
+void generate_rays(CameraSample *_samples, const Camera &_cam, const int _width, const int _height) {
 	rays.reserve(_width*_height);
 	for(int i = 0; i< _width*_height; i++) {
-		cam.generateRay(arr[i], &rays[i]);
+		_cam.generateRay(_samples[i], &rays[i]);
 	}
 }
 
@@ -279,6 +239,7 @@ void generate_intervals(struct OpenCLHandle *_handle, std::vector<float> *_inter
 	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
 	clFinish(handle.queue);
 	std::cout<<"intervals generated\n";
+	res.release();
 
 }
 
