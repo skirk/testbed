@@ -39,6 +39,9 @@ int indices[] = { 0, 1, 2, 0, 2, 3};
 void interrupt(std::string, int);
 float *execute_kernel(struct OpenCLHandle*);
 void init_buffers(struct OpenCLHandle*);
+void generate_rays();
+void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata);
+void analyse_intervals(float *_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata); 
 
 int nSamples = TXT_W*TXT_H;
 int iterations = 400;
@@ -151,6 +154,87 @@ void run() {
 	res.addKernel(&program, "ray_march");
 	res.addKernel(&program, "ray_intervals");
 
+	generate_rays();
+
+
+	init_buffers(&handle);
+	float *intervals = execute_kernel(&handle);
+
+	std::vector<vec3> raydata;
+	std::vector<vec3> pointdata;
+       	analyse_intervals(intervals, &raydata, &pointdata);
+	
+	init_gl_buffers(raydata, pointdata);
+
+	//res.release();
+
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	//init_buffers(&handle);
+	//execute_kernel(&handle);
+	//glBindTexture(GL_TEXTURE_2D, texture);
+
+
+	mainloop(win, &initGL, &draw);
+}
+
+void analyse_intervals(float *_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata) {
+
+
+	for(int i = 0; i< nSamples; i++) {
+		cl_float3 from_vec =rays[i].m_point; //from[i];
+		cl_float3 dir_vec = rays[i].m_dir; //dir[i];
+		//std::cout<<"from vec " <<from_vec.x << " " << from_vec.y << " " << from_vec.z <<'\n';
+		//std::cout<<"dir vec " <<dir_vec.x << " " << dir_vec.y << " " << dir_vec.z <<'\n';
+		cl_float3 temp2 = { dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth };
+		cl_float3 end_p = { from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z };  
+
+		_raydata->push_back(vec3(from_vec.x, from_vec.y, from_vec.z));
+		_raydata->push_back(vec3(end_p.x, end_p.y, end_p.z));
+
+		for (int k = 0; k < iterations; k++) {
+			if( _intervals[i*iterations+k] * _intervals[i*iterations+k+1] <= 0 ) {
+				//std::cout<<[i*iterations+k] << " "<< array[i*iterations+k+1] << '\n';
+				int step_id = k;// (i*iterations+k) % iterations ;
+				cl_float3 temp =  { end_p.x - from_vec.x, end_p.y - from_vec.y , end_p.z - from_vec.z };
+				float length = sqrt(temp.x*temp.x + temp.y*temp.y + temp.z*temp.z);
+				float step = length / iterations;
+				cl_float3 final_p = { from_vec.x + dir_vec.x*step*step_id, from_vec.y + dir_vec.y*step*step_id, from_vec.z + dir_vec.z*step*step_id};
+				_pointdata->push_back(vec3(final_p.x, final_p.y, final_p.z)); 
+				//std::cout<<final_p.x << " " << final_p.y << " " << final_p.z <<'\n';
+			}
+		}
+	}
+}
+
+void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata) {
+
+	glGenVertexArrays(1, &vao);
+	glGenVertexArrays(1, &vao2);
+
+	GLuint VBO_ID, VBO_ID2;
+
+	glBindVertexArray(vao);
+	glGenBuffers(1, &VBO_ID); 
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_ID);	
+	size = _raydata.size();
+	glBufferData(GL_ARRAY_BUFFER, size*sizeof(vec3), &_raydata[0], GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
+	glEnableVertexAttribArray(0);
+
+	glBindVertexArray(vao2);
+	glGenBuffers(1, &VBO_ID2); 
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_ID2);	
+	psize = _pointdata.size();
+	glBufferData(GL_ARRAY_BUFFER, psize*sizeof(vec3), &_pointdata[0], GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
+	glEnableVertexAttribArray(0);
+	glBindVertexArray(0);
+
+}
+
+void generate_rays() {
+
 	Sampler samp(0, TXT_W, 0, TXT_H);
 	//CameraSample *arr = samp.getSamples(nSamples);
 	CameraSample *arr = samp.sampleForEachPixel();
@@ -170,76 +254,6 @@ void run() {
 	for(int i = 0; i< nSamples; i++) {
 		cam.generateRay(arr[i], &rays[i]);
 	}
-
-	std::vector<vec3> ray_data;
-	std::vector<vec3> points;
-
-	init_buffers(&handle);
-	float *intervals = execute_kernel(&handle);
-
-	for(int i = 0; i< nSamples; i++) {
-		cl_float3 from_vec =rays[i].m_point; //from[i];
-		cl_float3 dir_vec =rays[i].m_dir; //dir[i];
-		std::cout<<"from vec " <<from_vec.x << " " << from_vec.y << " " << from_vec.z <<'\n';
-		std::cout<<"dir vec " <<dir_vec.x << " " << dir_vec.y << " " << dir_vec.z <<'\n';
-		cl_float3 temp2 = { dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth };
-		cl_float3 end_p = { from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z };  
-
-		ray_data.push_back(vec3(from_vec.x, from_vec.y, from_vec.z));
-		ray_data.push_back(vec3(end_p.x, end_p.y, end_p.z));
-
-		for (int k = 0; k < iterations; k++) {
-			if( intervals[i*iterations+k] * intervals[i*iterations+k+1] <= 0 ) {
-				//std::cout<<[i*iterations+k] << " "<< array[i*iterations+k+1] << '\n';
-				int step_id = k;// (i*iterations+k) % iterations ;
-				cl_float3 temp =  { end_p.x - from_vec.x, end_p.y - from_vec.y , end_p.z - from_vec.z };
-				float length = sqrt(temp.x*temp.x + temp.y*temp.y + temp.z*temp.z);
-				float step = length / iterations;
-				cl_float3 final_p = { from_vec.x + dir_vec.x*step*step_id, from_vec.y + dir_vec.y*step*step_id, from_vec.z + dir_vec.z*step*step_id};
-				points.push_back(vec3(final_p.x, final_p.y, final_p.z)); 
-				//std::cout<<final_p.x << " " << final_p.y << " " << final_p.z <<'\n';
-			}
-		}
-	}
-	//res.release();
-
-	glGenVertexArrays(1, &vao);
-	glGenVertexArrays(1, &vao2);
-	/*
-	   GLERR = glGetError();
-	   if(GLERR != GL_NO_ERROR) {
-	   std::cout<<"perrkkkele" <<gl_error_to_string(GLERR)<<'\n';
-	//interrupt("GL ERROR", -1);
-	}
-	*/
-	GLuint VBO_ID, VBO_ID2;
-
-	glBindVertexArray(vao);
-	glGenBuffers(1, &VBO_ID); 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO_ID);	
-	size = ray_data.size();
-	glBufferData(GL_ARRAY_BUFFER, size*sizeof(vec3), &ray_data[0], GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
-	glEnableVertexAttribArray(0);
-
-	
-	glBindVertexArray(vao2);
-	glGenBuffers(1, &VBO_ID2); 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO_ID2);	
-	psize = points.size();
-	glBufferData(GL_ARRAY_BUFFER, psize*sizeof(vec3), &points[0], GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0); 
-	glEnableVertexAttribArray(0);
-	glBindVertexArray(0);
-
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	//init_buffers(&handle);
-	//execute_kernel(&handle);
-	//glBindTexture(GL_TEXTURE_2D, texture);
-
-
-	mainloop(win, &initGL, &draw);
 }
 
 float *execute_kernel(struct OpenCLHandle *_handle) {
@@ -255,7 +269,6 @@ float *execute_kernel(struct OpenCLHandle *_handle) {
 	if(err < 0) interrupt("Unable to set kernel argument 3", err);
 	cl_mem *asd = res.getMemObj("result_buf");
 
-	std::cout<<"---EXECUTING--\n"; 
 	size_t worksize = nSamples;
 	err = clEnqueueNDRangeKernel(handle.queue, *res.getKernel("ray_intervals"), 1, NULL, &worksize, NULL, 0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Kernel", err);
@@ -265,7 +278,6 @@ float *execute_kernel(struct OpenCLHandle *_handle) {
 
 	err = clEnqueueReadBuffer(handle.queue, *asd, CL_FALSE, 0, sizeof(cl_float)*nSamples*iterations, values,  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
-
 	clFinish(handle.queue);
 
 	return values;
@@ -275,7 +287,7 @@ float *execute_kernel(struct OpenCLHandle *_handle) {
 
 
 void init_buffers(struct OpenCLHandle *_handle) {
-	
+
 	cl_int err;
 	cl_mem *from_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(Ray)*nSamples, NULL, &err)); 
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
@@ -287,6 +299,9 @@ void init_buffers(struct OpenCLHandle *_handle) {
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
 	res.addMemObj(result_buf, "result_buf");
 }
+
+
+
 
 /*
    void init_buffers(struct OpenCLHandle *_handle) {
@@ -332,23 +347,23 @@ res.addMemObj(img_data, "img_data");
 
 void execute_kernel(struct OpenCLHandle *_handle) {
 
-	cl_int err;
-	int iteration = 512;
-	   err = clSetKernelArg(*res.getKernel("ray_march"), 0, sizeof(cl_mem), res.getMemObj("from_buf"));
-	   if(err < 0) interrupt("Unable to set kernel argument ", err);
-	   err = clSetKernelArg(*res.getKernel("ray_march"), 1, sizeof(cl_mem), res.getMemObj("to_buf"));
-	//if(err < 0) interrupt("Unable to set kernel argument ", err);
-	err = clSetKernelArg(*res.getKernel("ray_march"), 0, sizeof(int), &iteration);
-	if(err < 0) interrupt("Unable to set kernel argument ", err);
-	err = clSetKernelArg(*res.getKernel("ray_march"), 1, sizeof(cl_mem), res.getMemObj("img_data"));
-	if(err < 0) interrupt("Unable to set kernel argument ", err);
+cl_int err;
+int iteration = 512;
+err = clSetKernelArg(*res.getKernel("ray_march"), 0, sizeof(cl_mem), res.getMemObj("from_buf"));
+if(err < 0) interrupt("Unable to set kernel argument ", err);
+err = clSetKernelArg(*res.getKernel("ray_march"), 1, sizeof(cl_mem), res.getMemObj("to_buf"));
+//if(err < 0) interrupt("Unable to set kernel argument ", err);
+err = clSetKernelArg(*res.getKernel("ray_march"), 0, sizeof(int), &iteration);
+if(err < 0) interrupt("Unable to set kernel argument ", err);
+err = clSetKernelArg(*res.getKernel("ray_march"), 1, sizeof(cl_mem), res.getMemObj("img_data"));
+if(err < 0) interrupt("Unable to set kernel argument ", err);
 
-	err = clEnqueueAcquireGLObjects(_handle->queue, 1, res.getMemObj("img_data"), 0, NULL, NULL);
-	if(err < 0) interrupt("Couldn't acquire GL objects ", err);
+err = clEnqueueAcquireGLObjects(_handle->queue, 1, res.getMemObj("img_data"), 0, NULL, NULL);
+if(err < 0) interrupt("Couldn't acquire GL objects ", err);
 
-	err = clEnqueueNDRangeKernel(_handle->queue, *res.getKernel("ray_march"), 2, NULL, (size_t[]){TXT_W, TXT_H}, NULL, 0, NULL, NULL);
-	if(err < 0) interrupt("Unable to enqueue kernel ", err);
-	clFinish(_handle->queue);
+err = clEnqueueNDRangeKernel(_handle->queue, *res.getKernel("ray_march"), 2, NULL, (size_t[]){TXT_W, TXT_H}, NULL, 0, NULL, NULL);
+if(err < 0) interrupt("Unable to enqueue kernel ", err);
+clFinish(_handle->queue);
 }
 
 */
