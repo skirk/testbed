@@ -50,18 +50,17 @@ float Lerp(float t, float v1, float v2) {
 
 void Sampler::computeSubWindow(int _num, int _count, int *_newXstart, int *_newXend,int *_newYstart, int *_newYend) const {
 
-	int ntx = _count, nty = 1;
-	while ((ntx & 0x1) == 0 && 2 * dx * nty < dy * ntx) {
-		ntx >>= 1;
-		nty <<= 1;
-	}
-	int xo = _num % ntx, yo = _num /ntx;
-	float tx0 = float(xo) / float(ntx), tx1 = float(xo + 1) / float(ntx);
-	float ty0 = float(yo) / float(nty), ty1 = float(yo + 1) / float(nty);
-	*_newXstart = (int)floorf(Lerp(tx0, xPixelStart, xPixelEnd));
-	*_newXend =   (int)floorf(Lerp(tx1, xPixelStart, xPixelEnd));
-	*_newYstart = (int)floorf(Lerp(ty0, yPixelStart, yPixelEnd));
-	*_newYend =   (int)floorf(Lerp(ty1, yPixelStart, yPixelEnd));
+	int newx0= dx/_count * _num;
+	int newx1= dx/_count * (_num+1);
+	std::cout<<"new dimensions "<<newx0<<" "<<newx1<<'\n';
+	std::cout<<"new dimensions "<<yPixelStart<<" "<<yPixelEnd<<'\n';
+
+	//float tx0 = float(xo) / float(ntx), tx1 = float(xo + 1) / float(ntx);
+	//float ty0 = float(yo) / float(nty), ty1 = float(yo + 1) / float(nty);
+	*_newXstart = newx0;//(int)floorf(Lerp(tx0, xPixelStart, xPixelEnd));
+	*_newXend =   newx1;//(int)floorf(Lerp(tx1, xPixelStart, xPixelEnd));
+	*_newYstart = yPixelStart;//(int)floorf(Lerp(ty0, yPixelStart, yPixelEnd));
+	*_newYend =   yPixelEnd;//(int)floorf(Lerp(ty1, yPixelStart, yPixelEnd));
 
 }
 
@@ -75,7 +74,7 @@ Sampler* Sampler::getSubSampler(int num, int count) {
 
 void Sampler::getSubSamplers(std::vector<Sampler*> *_samplers, int num) {
 	for(int i = 0; i < num; i ++) {	
-		_samplers->push_back(getSubSampler(i, dx*dy));
+		_samplers->push_back(getSubSampler(i, num));
 	}
 }
 

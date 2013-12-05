@@ -58,3 +58,14 @@ cl_mem *CL_Resources::getMemObj(const std::string &_name)const {
 	return m_memory.find(_name)->second;
 }
 
+void CL_Resources::releaseMemory(const std::string &_name) {
+
+	std::map<std::string ,cl_mem*>::iterator memory_it = m_memory.find(_name);
+	if(memory_it == m_memory.end())
+	       	std::cout << "couldn't find memory" <<'\n';
+	else {
+	       	clReleaseMemObject(*memory_it->second);
+		m_memory.erase(memory_it);
+	       	std::cout << "memory released" <<'\n';
+	}
+}

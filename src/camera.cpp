@@ -29,30 +29,14 @@ void ChangeBasis(const mat4 &_matrix, const vec3 &pt, vec3 *_target);
 
 using glm::vec4;
 float OrthoCamera::generateRay(const CameraSample &sample, Ray *ray) const {
-	vec3 Pras(sample.imageX, sample.imageY, 0);
-	vec3 Pcamera;
-	float angle = 60;
 
-	float aspect = m_film->xResolution/m_film->yResolution;
-	//glm::mat4 scale1 = glm::scale((float)1.f/m_film->xResolution, (float)1.f/m_film->yResolution, 1.f);
-	//vec4 normalized =  scale1 * vec4(Pras, 1.0);
 	vec4 cameraspace =  vec4( 2 * (sample.imageX + 0.5) /m_film->xResolution -1 ,
 				  1 - 2 * (sample.imageY + 0.5 ) / m_film->yResolution,
 				  0.f, 1.f);
-
-	//glm::mat4 scale2 = glm::scale( (2.f - 1.f/normalized.x)  /*(float)tan(angle/2.f * M_PI /180) */ , (1.f/normalized.y - 2.f)  /*(float)tan(angle/2.f * M_PI / 180)*/, 1.f);
-	//vec4 cameraspace = normalized * scale2;
-	//std::cout<<glm::to_string(CameraToWorld)<<'\n';
 	vec4 worldspace = CameraToWorld * cameraspace;
 	vec4 direction = CameraToWorld * vec4(0, 0, -1, 0); 
 
 	*ray = Ray(vec3(worldspace), vec3(direction));
-	//ChangeBasis(RasterToScreen, Pras, &Pcamera);
-	//std::cout<<glm::to_string(RasterToCamera)<<std::endl;
-	//ChangeBasis(CameraToWorld, ray->m_point, &ray->m_point);
-	//std::cout<<glm::to_string(ray->m_point)<<std::endl;
-	//ChangeBasis(CameraToWorld, ray->m_dir, &ray->m_dir);
-	//std::cout<<glm::to_string(Pcamera)<<std::endl;
 	return 1.0;
 
 }

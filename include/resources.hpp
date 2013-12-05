@@ -13,6 +13,7 @@ class CL_Resources {
 		void addMemObj(cl_mem*, const std::string &_name);
 		cl_kernel *getKernel(const std::string&) const;
 		cl_mem *getMemObj(const std::string&) const;
+		void releaseMemory(const std::string&);
 		void release();
 	private:
 		std::map<std::string, cl_mem*> m_memory;

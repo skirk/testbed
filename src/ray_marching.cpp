@@ -35,16 +35,16 @@ CL_Resources res;
 
 void interrupt(std::string, int);
 void generate_intervals(struct OpenCLHandle*, std::vector<float> *_intervals, int _nSamples, int _iterations);
-void init_buffers(struct OpenCLHandle*, int, int);
-void generate_rays(CameraSample *, const Camera&, const int, const int);
+void init_buffers(struct OpenCLHandle*, const std::vector<Ray> &_rays, int, int);
+void generate_rays(CameraSample *, std::vector<Ray> *_rays, const Camera&, const int, const int);
+void generate_raydata(const std::vector<Ray> &_rays, std::vector<vec3> *_renderdata);
 void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata);
-void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata); 
+void analyse_intervals(const std::vector<float> &_intervals,std::vector<Ray> *_rays, std::vector<vec3> *_pointdata); 
 
 int depth = 30;
 int size, psize;
 
 GLint timeloc, colorloc;
-std::vector<Ray> rays;
 
 void initGL() {
 
@@ -117,30 +117,40 @@ void run(int _tex_w, int _tex_h, int _n_inters) {
 
 	Sampler samp(0, _tex_w, 0, _tex_h);
 	Film film;
-	film.xResolution = _tex_w;
-	film.yResolution = _tex_h;
+	film.xResolution = _tex_w, film.yResolution = _tex_h;
 	float screen[4] = { -_tex_w/_tex_h, _tex_w/_tex_h, -1.0f, 1.0f };
 	mat4 position =  glm::rotate(-30.f, vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f);
 	mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
-
 	OrthoCamera cam(position, ortho, screen, &film);
-	CameraSample *arr = samp.sampleForEachPixel();
 
+	std::vector<Sampler*> samplers;
+	samp.getSubSamplers(&samplers, 2);
 
-	generate_rays(arr, cam, _tex_w, _tex_h);
-
-
-
-	init_buffers(&handle, _tex_w*_tex_h, _n_inters);
-	std::vector<float> intervals;
-	generate_intervals(&handle, &intervals, _tex_w*_tex_h, _n_inters);
-
-	std::vector<vec3> raydata;
-	raydata.resize(_tex_w*_tex_h);
 	std::vector<vec3> pointdata;
-	analyse_intervals(intervals, &raydata, &pointdata);
+	std::vector<vec3> raydata;
+
+	for(unsigned int i = 0; i < samplers.size(); i++) {
+
+		std::vector<Ray> rays;
+		CameraSample *arr = samplers[i]->sampleForEachPixel();
+		generate_rays(arr, &rays, cam, _tex_w, _tex_h);
+		init_buffers(&handle, rays, _tex_w*_tex_h, _n_inters);
+
+		//generate interval data
+		std::vector<float> intervals;
+		generate_intervals(&handle, &intervals, _tex_w*_tex_h, _n_inters);
+		//generate points according to data
+		analyse_intervals(intervals, &rays, &pointdata);
+
+		//render data for rays
+		generate_raydata(rays, &raydata);
+		res.releaseMemory("result_buf");
+		res.releaseMemory("from_buf");
+		delete[] arr;
+	}
 
 	init_gl_buffers(raydata, pointdata);
+
 
 	//res.release();
 
@@ -154,31 +164,24 @@ void run(int _tex_w, int _tex_h, int _n_inters) {
 	mainloop(win, &initGL, &draw);
 }
 
-void analyse_intervals(const std::vector<float> &_intervals, std::vector<vec3> *_raydata, std::vector<vec3> *_pointdata) {
+void analyse_intervals(const std::vector<float> &_intervals, std::vector<Ray> *_rays, std::vector<vec3> *_pointdata) {
 
-	int samples = _raydata->size();
+	int samples = _rays->size();
 	int iterations = _intervals.size()/samples;
 	for(int i = 0; i< samples; i++) {
-		cl_float3 from_vec =rays[i].m_point; //from[i];
-		cl_float3 dir_vec = rays[i].m_dir; //dir[i];
-		//std::cout<<"from vec " <<from_vec.x << " " << from_vec.y << " " << from_vec.z <<'\n';
-		//std::cout<<"dir vec " <<dir_vec.x << " " << dir_vec.y << " " << dir_vec.z <<'\n';
-		cl_float3 temp2 = {{ dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth }};
-		cl_float3 end_p = {{ from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z }};  
-
-		_raydata->push_back(vec3(from_vec.x, from_vec.y, from_vec.z));
-		_raydata->push_back(vec3(end_p.x, end_p.y, end_p.z));
-
 		for (int k = 0; k < iterations-1; k++) {
 			if( _intervals[i*iterations+k] * _intervals[i*iterations+k+1] <= 0 ) {
-				//std::cout<<[i*iterations+k] << " "<< array[i*iterations+k+1] << '\n';
-				int step_id = k;// (i*iterations+k) % iterations ;
+
+				cl_float3 from_vec = (*_rays)[i].m_point; 
+				cl_float3 dir_vec =  (*_rays)[i].m_dir;   
+				cl_float3 temp2 = {{ dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth }};
+				cl_float3 end_p = {{ from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z }};  
+				int step_id = k;
 				cl_float3 temp =  {{ end_p.x - from_vec.x, end_p.y - from_vec.y , end_p.z - from_vec.z }};
 				float length = sqrt(temp.x*temp.x + temp.y*temp.y + temp.z*temp.z);
 				float step = length / iterations;
 				cl_float3 final_p ={{ from_vec.x + dir_vec.x*step*step_id, from_vec.y + dir_vec.y*step*step_id, from_vec.z + dir_vec.z*step*step_id}};
 				_pointdata->push_back(vec3(final_p.x, final_p.y, final_p.z)); 
-				//std::cout<<final_p.x << " " << final_p.y << " " << final_p.z <<'\n';
 			}
 		}
 	}
@@ -210,10 +213,24 @@ void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> 
 
 }
 
-void generate_rays(CameraSample *_samples, const Camera &_cam, const int _width, const int _height) {
-	rays.reserve(_width*_height);
+void generate_rays(CameraSample *_samples, std::vector<Ray> *_rays, const Camera &_cam, const int _width, const int _height) {
+
+	_rays->resize(_width*_height);
 	for(int i = 0; i< _width*_height; i++) {
-		_cam.generateRay(_samples[i], &rays[i]);
+		_cam.generateRay(_samples[i], &(*_rays)[i]);
+
+	}
+}
+
+void generate_raydata(const std::vector<Ray> &_rays, std::vector<vec3> *_renderdata) {
+
+	for(unsigned int i = 0; i < _rays.size(); i++) {
+		cl_float3 from_vec = _rays[i].m_point;
+		cl_float3 dir_vec = _rays[i].m_dir;
+		cl_float3 temp2 = {{ dir_vec.x*depth, dir_vec.y*depth, dir_vec.z*depth }};
+		cl_float3 end_p = {{ from_vec.x + temp2.x , from_vec.y + temp2.y, from_vec.z + temp2.z }};  
+		_renderdata->push_back(vec3(from_vec.x, from_vec.y, from_vec.z));
+		_renderdata->push_back(vec3(end_p.x, end_p.y, end_p.z));
 	}
 }
 
@@ -239,19 +256,17 @@ void generate_intervals(struct OpenCLHandle *_handle, std::vector<float> *_inter
 	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
 	clFinish(handle.queue);
 	std::cout<<"intervals generated\n";
-	res.release();
-
 }
 
 
 
-void init_buffers(struct OpenCLHandle *_handle, int _n_samples, int _iterations) {
+void init_buffers(struct OpenCLHandle *_handle, const std::vector<Ray> &_rays, int _n_samples, int _iterations) {
 
 	cl_int err;
 	cl_mem *from_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(Ray)*_n_samples, NULL, &err)); 
 	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
 	res.addMemObj(from_buf, "from_buf");
-	err = clEnqueueWriteBuffer(handle.queue, *from_buf, CL_FALSE, 0, sizeof(Ray)*_n_samples, &rays[0],  0, NULL, NULL);
+	err = clEnqueueWriteBuffer(handle.queue, *from_buf, CL_FALSE, 0, sizeof(Ray)*_n_samples, &_rays[0],  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Write Buffer: ", err);
 	clFinish(handle.queue);
 	cl_mem *result_buf = new cl_mem(clCreateBuffer(handle.context, CL_MEM_READ_ONLY, sizeof(cl_float)*_n_samples*_iterations, NULL, &err)); 
