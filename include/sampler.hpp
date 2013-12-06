@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-class CameraSample;
+class LightSample;
 
 class Sampler {
 	public:
@@ -11,9 +11,9 @@ class Sampler {
 		int dx, dy;
 
 		//get _count many samples distributed evenly on normalized aread
-		CameraSample *getSamples(int _count);
+		LightSample *getSamples(int _count);
 		//get a sample for each pixel
-		CameraSample *sampleForEachPixel();
+		LightSample *sampleForEachPixel();
 		//divide image into tiles and create a subsampler for each tile and return them
 		void getSubSamplers(std::vector<Sampler*> *_samplers, int num);
 

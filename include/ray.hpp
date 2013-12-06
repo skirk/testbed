@@ -2,6 +2,7 @@
 #define _RAY_H_
 #include <CL/cl.h>
 #include <glm/glm.hpp>
+#include <vector>
 
 using glm::vec3;
 
@@ -13,5 +14,10 @@ struct Ray {
 		cl_float3 m_dir;
 };
 		
-
+struct RayBatch {
+	std::vector<Ray> m_rays;
+	std::vector<float> m_intervals;
+	int m_depth;
+	int m_iterations;
+};
 #endif

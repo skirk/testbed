@@ -13,10 +13,10 @@ Sampler::Sampler(int _xstart, int _xend, int _ystart, int _yend) :
 
 }
 
-CameraSample *Sampler::getSamples(int _count) {
+LightSample *Sampler::getSamples(int _count) {
 
 	//number of tiles in each dimension
-	CameraSample *array = new CameraSample[_count];
+	LightSample *array = new LightSample[_count];
 	int ntx = _count, nty = 1;
 	while ((ntx & 0x1) == 0 && 2 * dx * nty < dy * ntx) {
 		ntx >>= 1;
@@ -78,8 +78,8 @@ void Sampler::getSubSamplers(std::vector<Sampler*> *_samplers, int num) {
 	}
 }
 
-CameraSample *Sampler::sampleForEachPixel() {
-	CameraSample *array = new CameraSample[dx*dy];
+LightSample *Sampler::sampleForEachPixel() {
+	LightSample *array = new LightSample[dx*dy];
 	float sampleBuf[dx*dy*2];
 	stratifiedSample2D(sampleBuf, dx, dy);
 	for(int i = 0; i < dx*dy; i++) {

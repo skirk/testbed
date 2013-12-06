@@ -38,7 +38,7 @@ SDL_Window *setGLContext(SDL_GLContext *_ctx, struct settings *_settings)
 	return window;
 }
 
-void mainloop(SDL_Window *_win,void (*init_function)(), void (*draw_function)(float))
+void mainloop(SDL_Window *_win, void (*init_function)(), void(*update_function)(float), void (*draw_function)())
 {
 
 
@@ -104,7 +104,8 @@ void mainloop(SDL_Window *_win,void (*init_function)(), void (*draw_function)(fl
 					break;
 			}
 		}
-		(*draw_function)((float)thisTime);
+		(*update_function)((float)thisTime);
+		(*draw_function)();
 
 		SDL_GL_SwapWindow(_win);
 	}

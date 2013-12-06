@@ -1,8 +1,21 @@
-#include "resources.hpp"
-#include "OpenCLUtil.h"
+#include <CL/cl_gl.h>
+#include <GL/glx.h>
 #include <iostream>
+#include <stdio.h>
 #include <cstdlib>
+#include "OpenCLUtil.h"
+#include "error.hpp"
 
+CL_Resources* CL_Resources::m_instance = NULL;
+
+
+CL_Resources &CL_Resources::getInstance()
+{
+	if(m_instance == NULL) {
+		m_instance = new CL_Resources();
+	}
+	return *m_instance;
+}
 
 CL_Resources::CL_Resources():
 	isReleased(false)
@@ -69,3 +82,74 @@ void CL_Resources::releaseMemory(const std::string &_name) {
 	       	std::cout << "memory released" <<'\n';
 	}
 }
+
+void CL_CALLBACK contexterror(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
+	printf("context error %s\n", errinfo);
+}
+
+void CL_Resources::initOpenCLContext() {
+
+	cl_int err;
+
+	err = clGetPlatformIDs(1, &platform, NULL);
+	if(err < 0) interrupt("Couldn't find any platforms", err);
+
+	/* Access a device */
+	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
+	if(err < 0)  interrupt("Couldn't find any devices", err);
+
+	char buf_data[1028];
+	cl_ulong max_alloc;
+	clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(buf_data), &max_alloc, NULL);
+	printf("max allocation size: %lu\n", (unsigned long)max_alloc);
+
+	char buf_data2[1028];
+	cl_ulong max_alloc1;
+	clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(buf_data2), &max_alloc1, NULL);
+	printf("max memory size: %lu\n", (unsigned long)max_alloc1);
+
+	context = clCreateContext(NULL, 1, &device, &contexterror, NULL, &err);
+	if(err < 0) interrupt("Couldn't create a context", err);
+
+
+}
+
+void CL_Resources::initOpenCLGLContext() {
+	cl_int err;
+
+	err = clGetPlatformIDs(1, &platform, NULL);
+	if(err < 0)  interrupt("Couldn't find any platforms", err);
+
+	/* Access a device */
+	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, NULL);
+	if(err < 0) interrupt("Couldn't find any devices", err);
+
+	char buf_data[1028];
+	cl_ulong max_alloc;
+	clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(buf_data), &max_alloc, NULL);
+	printf("max allocation size: %lu\n", (unsigned long)max_alloc);
+
+	char buf_data2[1028];
+	cl_ulong max_alloc1;
+	clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(buf_data2), &max_alloc1, NULL);
+	printf("max memory size: %lu\n", (unsigned long)max_alloc1);
+
+	cl_context_properties properties[] = {
+		CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
+		CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
+		CL_CONTEXT_PLATFORM, (cl_context_properties) platform, 
+		0};
+
+
+	context = clCreateContext(properties, 1, &device, NULL, NULL, &err);
+	if(err < 0) interrupt("Couldn't create a context", err);
+
+	queue = clCreateCommandQueue(context, device, 0, &err);
+	if(err < 0) {
+		perror("Couldn't create a command queue");
+		exit(1);
+	};
+
+}
+
+

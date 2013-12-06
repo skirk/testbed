@@ -12,78 +12,8 @@ int errorfunc(char *string, int err) {
 void CL_CALLBACK contexterror(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
 	printf("context error %s\n", errinfo);
 }
-int initOpenCLContext(struct OpenCLHandle *_handle) {
 
-	cl_int err;
-
-	err = clGetPlatformIDs(1, &_handle->platform, NULL);
-	if(err < 0) return errorfunc((char*)"Couldn't find any platforms", err);
-
-	/* Access a device */
-	err = clGetDeviceIDs(_handle->platform, CL_DEVICE_TYPE_GPU, 1, &_handle->device, NULL);
-	if(err < 0) return errorfunc((char*)"Couldn't find any devices", err);
-
-	char buf_data[1028];
-	cl_ulong max_alloc;
-	clGetDeviceInfo(_handle->device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(buf_data), &max_alloc, NULL);
-	printf("max allocation size: %lu\n", (unsigned long)max_alloc);
-
-	char buf_data2[1028];
-	cl_ulong max_alloc1;
-	clGetDeviceInfo(_handle->device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(buf_data2), &max_alloc1, NULL);
-	printf("max memory size: %lu\n", (unsigned long)max_alloc1);
-
-	_handle->context = clCreateContext(NULL, 1, &_handle->device, &contexterror, NULL, &err);
-	if(err < 0) return errorfunc("Couldn't create a context", err);
-
-	return 0;
-
-}
-
-int initOpenCLGLContext(struct OpenCLHandle *_handle) {
-	cl_int err;
-
-	err = clGetPlatformIDs(1, &_handle->platform, NULL);
-	if(err < 0) return errorfunc("Couldn't find any platforms", err);
-
-	/* Access a device */
-	err = clGetDeviceIDs(_handle->platform, CL_DEVICE_TYPE_GPU, 1, &_handle->device, NULL);
-	if(err < 0) return errorfunc("Couldn't find any devices", err);
-
-	char buf_data[1028];
-	cl_ulong max_alloc;
-	clGetDeviceInfo(_handle->device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(buf_data), &max_alloc, NULL);
-	printf("max allocation size: %lu\n", (unsigned long)max_alloc);
-
-	char buf_data2[1028];
-	cl_ulong max_alloc1;
-	clGetDeviceInfo(_handle->device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(buf_data2), &max_alloc1, NULL);
-	printf("max memory size: %lu\n", (unsigned long)max_alloc1);
-
-	cl_context_properties properties[] = {
-		CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
-		CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
-		CL_CONTEXT_PLATFORM, (cl_context_properties) _handle->platform, 
-		0};
-
-
-	_handle->context = clCreateContext(properties, 1, &_handle->device, NULL, NULL, &err);
-	if(err < 0) return errorfunc("Couldn't create a context", err);
-
-	_handle->queue = clCreateCommandQueue(_handle->context, _handle->device, 0, &err);
-	if(err < 0) {
-		perror("Couldn't create a command queue");
-		exit(1);
-	};
-
-	return 0;
-
-
-
-}
-
-
-int createProgramFromSource(struct OpenCLHandle *_handle, const char *_program_file, cl_program *_program) {
+int createProgramFromSource(cl_device_id *_device, cl_context *_context, const char *_program_file, cl_program *_program) {
 	cl_int err;
 	FILE *program_handle;
 	char *program_buffer, *program_log;
@@ -101,7 +31,7 @@ int createProgramFromSource(struct OpenCLHandle *_handle, const char *_program_f
 	fclose(program_handle);
 
 	/* Create program from file */
-	*_program = clCreateProgramWithSource(_handle->context, 1, (const char**)&program_buffer, &program_size, &err);
+	*_program = clCreateProgramWithSource(*_context, 1, (const char**)&program_buffer, &program_size, &err);
 	if(err < 0) return errorfunc("Couldn't create the program", err);
 	free(program_buffer);
 
@@ -110,10 +40,10 @@ int createProgramFromSource(struct OpenCLHandle *_handle, const char *_program_f
 	if(err < 0) {
 
 		/* Find size of log and print to std output */
-		clGetProgramBuildInfo(*_program, _handle->device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+		clGetProgramBuildInfo(*_program, *_device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
 		program_log = (char*) malloc(log_size + 1);
 		program_log[log_size] = '\0';
-		clGetProgramBuildInfo(*_program, _handle->device, CL_PROGRAM_BUILD_LOG, log_size + 1, program_log, NULL);
+		clGetProgramBuildInfo(*_program, *_device, CL_PROGRAM_BUILD_LOG, log_size + 1, program_log, NULL);
 		printf("%s\n", program_log);
 		free(program_log);
 		errorfunc("Something went wrong", 1);

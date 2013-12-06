@@ -1,7 +1,7 @@
-#ifndef _CAMERASAMPLE_H_
-#define _CAMERASAMPLE_H_
+#ifndef _SAMPLE_H_
+#define _SAMPLE_H_
 
-class CameraSample {
+class LightSample {
 	public:
 		float imageX;
 		float imageY;

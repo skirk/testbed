@@ -8,6 +8,7 @@
 #include "film.hpp"
 #include "camera.hpp"
 #include "ray.hpp"
+#include "scene.hpp"
 
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -26,22 +27,21 @@ struct settings sets = {(char*)"Ray_marching",
 	SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
 	WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN }; 
 
-struct OpenCLHandle handle;
 SDL_GLContext ctx = NULL;
 
 cl_program program;
 GLuint texture;
 GLuint vao;
 GLuint vao2;
-CL_Resources res;
 
-void interrupt(std::string, int);
-void generate_intervals(struct OpenCLHandle*, std::vector<float> *_intervals, int _nSamples, int _iterations);
+/*
 void init_buffers(struct OpenCLHandle*, const std::vector<Ray> &_rays, int, int);
 void generate_rays(CameraSample *, std::vector<Ray> *_rays, const Camera&, const int, const int);
 void generate_raydata(const std::vector<Ray> &_rays, std::vector<vec3> *_renderdata);
 void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata);
+void generate_intervals(struct OpenCLHandle*, std::vector<float> *_intervals, int _nSamples, int _iterations);
 void analyse_intervals(const std::vector<float> &_intervals,std::vector<Ray> *_rays, std::vector<vec3> *_pointdata); 
+*/
 timespec diff(timespec start, timespec end);
 
 int depth = 30;
@@ -51,6 +51,7 @@ GLint timeloc, colorloc;
 
 void initGL() {
 
+	/*
 	using glm::mat4;
 	GLuint shader = create_shader((char*)"pointcloud.vert", (char*)"pointcloud.frag");
 	glUseProgram(shader);
@@ -71,31 +72,38 @@ void initGL() {
 
 	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &mvp[0][0]); 
 	glUniformMatrix4fv(mv_loc, 1, GL_FALSE, &mv[0][0]); 
+	*/
 
 
 }
 
 
-void draw(float _time) {
+void draw() {
 
+	/*
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUniform1f(timeloc, _time);
+	GLfloat p[2];
+	glGetFloatv(GL_POINT_SIZE_RANGE, p);
 	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
 	glm::vec4 color = glm::vec4(0.3, 0.0, 0.0, 1.0);
-	/*
 	glUniform1f(timeloc, _time);
 	glUniform4fv(colorloc,1, &color[0]);
 	glBindVertexArray(vao);
 	glDrawArrays(GL_LINES, 0, size);
-	*/
 
 	glBindVertexArray(vao2);
 	color = glm::vec4(0.0, 0.6, 0.6, 1.0);
 	glUniform4fv(colorloc,1, &color[0]);
-	glPointSize(0.001);
+	glPointSize(p[0]);
 	glDrawArrays(GL_POINTS, 0, psize);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	*/
 
+}
+
+void update(float _deltatime) 
+{
 }
 
 
@@ -106,8 +114,10 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	
 	SDL_Window *win = setGLContext(&ctx, &sets);
 	if( win == NULL ) { printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() ); }
+	
+	CL_Resources &res = CL_Resources::getInstance();
 
-	initOpenCLGLContext(&handle);
+	res.initOpenCLGLContext();
 
 	//init glew
 	glewExperimental = GL_TRUE;
@@ -117,6 +127,11 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 		exit(1);
 	}  
 
+	Scene scene;
+	
+	mainloop(win, &initGL, &scene.update, &draw);
+
+	/*
 	createProgramFromSource(&handle, PROGRAM_FILE, &program);
 	res.addKernel(&program, "ray_intervals");
 
@@ -176,9 +191,10 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	//glBindTexture(GL_TEXTURE_2D, texture);
 
 
-	mainloop(win, &initGL, &draw);
+	*/
 }
 
+/*
 void analyse_intervals(const std::vector<float> &_intervals, std::vector<Ray> *_rays, std::vector<vec3> *_pointdata) {
 
 	int samples = _rays->size();
@@ -204,7 +220,6 @@ void analyse_intervals(const std::vector<float> &_intervals, std::vector<Ray> *_
 
 void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata) {
 
-	glGenVertexArrays(1, &vao);
 	glGenVertexArrays(1, &vao2);
 
 	GLuint VBO_ID, VBO_ID2;
@@ -303,9 +318,6 @@ timespec diff(timespec start, timespec end)
 	return temp;
 }
 
-void interrupt(std::string _errormessage, int _errorcode) {
-	std::cout<<_errormessage<<" "<<getCLErrorString(_errorcode)<<'\n';
-	res.release();
-	exit(1);
-}
+
+*/
 
