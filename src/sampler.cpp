@@ -92,8 +92,8 @@ CameraSample *Sampler::sampleForEachPixel() {
 
 void Sampler::stratifiedSample2D(float *samp, int _nx, int _ny) {
 	//float dx = 1.f/nx, dy = 1.f / ny;
-	for(int y = 0; y < _ny; y++) {
-		for(int x = 0; x < _nx; x++) {
+	for(int y = yPixelStart; y < _ny +yPixelStart; y++) {
+		for(int x = xPixelStart; x < _nx + xPixelStart; x++) {
 			//todo add jitter
 			*samp++ =  (dx/_nx) * (x + 0.5);//(x + 0.5) *dx;
 			*samp++ =  (dy/_ny) * (y + 0.5);//(y + 0.5) *dy;

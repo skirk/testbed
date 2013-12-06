@@ -8,6 +8,7 @@
 #include "film.hpp"
 #include "camera.hpp"
 #include "ray.hpp"
+
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -15,6 +16,7 @@
 #include <CL/cl_gl.h>
 #include <iostream>
 #include <vector>
+#include <sys/time.h>
 
 #define PROGRAM_FILE "ray_march.cl"
 #define WIDTH 1280
@@ -40,6 +42,7 @@ void generate_rays(CameraSample *, std::vector<Ray> *_rays, const Camera&, const
 void generate_raydata(const std::vector<Ray> &_rays, std::vector<vec3> *_renderdata);
 void init_gl_buffers(const std::vector<vec3> &_raydata, const std::vector<vec3> &_pointdata);
 void analyse_intervals(const std::vector<float> &_intervals,std::vector<Ray> *_rays, std::vector<vec3> *_pointdata); 
+timespec diff(timespec start, timespec end);
 
 int depth = 30;
 int size, psize;
@@ -78,16 +81,18 @@ void draw(float _time) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUniform1f(timeloc, _time);
 	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
-	glUniform1f(timeloc, _time);
 	glm::vec4 color = glm::vec4(0.3, 0.0, 0.0, 1.0);
+	/*
+	glUniform1f(timeloc, _time);
 	glUniform4fv(colorloc,1, &color[0]);
 	glBindVertexArray(vao);
 	glDrawArrays(GL_LINES, 0, size);
+	*/
 
 	glBindVertexArray(vao2);
 	color = glm::vec4(0.0, 0.6, 0.6, 1.0);
 	glUniform4fv(colorloc,1, &color[0]);
-	glPointSize(3.0);
+	glPointSize(0.001);
 	glDrawArrays(GL_POINTS, 0, psize);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -95,7 +100,7 @@ void draw(float _time) {
 
 
 
-void run(int _tex_w, int _tex_h, int _n_inters) {
+void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	using glm::mat4;
 	using glm::vec3;
 	
@@ -123,32 +128,42 @@ void run(int _tex_w, int _tex_h, int _n_inters) {
 	mat4 ortho =  glm::scale(1.f, 1.f, -1.f) * glm::translate(0.f, 0.f, 0.0f);
 	OrthoCamera cam(position, ortho, screen, &film);
 
-	std::vector<Sampler*> samplers;
-	samp.getSubSamplers(&samplers, 2);
 
 	std::vector<vec3> pointdata;
 	std::vector<vec3> raydata;
 
+	std::vector<Sampler*> samplers;
+	samp.getSubSamplers(&samplers, _ntiles);
+
+	timespec before, after;
+	clock_gettime(CLOCK_REALTIME, &before);
 	for(unsigned int i = 0; i < samplers.size(); i++) {
 
 		std::vector<Ray> rays;
+		int dx = samplers[i]->dx;
+		int dy = samplers[i]->dy;
 		CameraSample *arr = samplers[i]->sampleForEachPixel();
-		generate_rays(arr, &rays, cam, _tex_w, _tex_h);
-		init_buffers(&handle, rays, _tex_w*_tex_h, _n_inters);
+		generate_rays(arr, &rays, cam, dx, dy);
+		init_buffers(&handle, rays, dx*dy, _n_inters);
 
 		//generate interval data
 		std::vector<float> intervals;
-		generate_intervals(&handle, &intervals, _tex_w*_tex_h, _n_inters);
+		generate_intervals(&handle, &intervals, dx*dy, _n_inters);
 		//generate points according to data
 		analyse_intervals(intervals, &rays, &pointdata);
 
 		//render data for rays
-		generate_raydata(rays, &raydata);
+		//generate_raydata(rays, &raydata);
 		res.releaseMemory("result_buf");
 		res.releaseMemory("from_buf");
 		delete[] arr;
 	}
+	clock_gettime(CLOCK_REALTIME, &after);
+	std::cout<<"time elapsed : "<<diff(before, after).tv_sec<<":"<<diff(before,after).tv_nsec<<'\n';
 
+	std::cout<<"points "<<pointdata.size()<<'\n';
+	//std::cout<<"pointdata size "<<sizeof(vec3)*pointdata.size()<<" b"<<'\n';
+	std::cout<<"pointdata size "<<sizeof(vec3)*pointdata.size()/1000000<<" mb"<<'\n';
 	init_gl_buffers(raydata, pointdata);
 
 
@@ -275,6 +290,18 @@ void init_buffers(struct OpenCLHandle *_handle, const std::vector<Ray> &_rays, i
 	std::cout<<"buffers initialised\n";
 }
 
+timespec diff(timespec start, timespec end)
+{
+	timespec temp;
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		temp.tv_sec = end.tv_sec-start.tv_sec-1;
+		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec-start.tv_sec;
+		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+	return temp;
+}
 
 void interrupt(std::string _errormessage, int _errorcode) {
 	std::cout<<_errormessage<<" "<<getCLErrorString(_errorcode)<<'\n';
