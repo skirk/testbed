@@ -3,6 +3,7 @@
 
 class LightSample {
 	public:
+		~LightSample() {}
 		float imageX;
 		float imageY;
 };

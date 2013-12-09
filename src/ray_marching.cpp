@@ -107,8 +107,12 @@ void update(float _deltatime)
 {
 }
 
+int ticks;
 void updateLight(mat4 *_pos, float delta) {
-
+	
+	ticks++;
+	
+	*_pos = glm::rotate(0.001f * (float)ticks, vec3(0.f, 1.f, 0.f)) * (*_pos);
 	return;
 }
 
@@ -142,7 +146,7 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	int timeloc = glGetUniformLocation(shader, "deltatime");
 	int colorloc = glGetUniformLocation(shader, "cl");
 
-	mat4 view = glm::lookAt(vec3(4.0, 0.0, 0.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
+	mat4 view = glm::lookAt(vec3(40.0, 20.0, 10.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
 	mat4 model = mat4(1.0);
 	mat4 projection = glm::perspective(70.f, (float)WIDTH/HEIGHT, 0.3f, 100.0f);
 	mat4 mv = view * model;
@@ -151,15 +155,15 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &mvp[0][0]); 
 	glUniformMatrix4fv(mv_loc, 1, GL_FALSE, &mv[0][0]); 
 
+	mat4 position =glm::rotate(-30.f, vec3(1.f, 0.f, 0.f)) * glm::scale(20.f, 20.f, 1.f) * glm::translate(0.f, 0.f, 20.f);
+	Light light1(position, 200, 200, &updateLight);
 
-	mat4 position = glm::translate(0.f, 0.f, 1.f);
-	Light light1(position, 5, 5, &updateLight);
 	std::vector<Light*> lights; 
 	lights.push_back(&light1);
 	Scene scene(lights);
 	Renderer r(&scene);;
 
-	mainloop(win, &initGL, &update, r.render);
+	mainloop(win, &initGL, scene.update, r.render);
 
 	/*
 	   createProgramFromSource(&handle, PROGRAM_FILE, &program);

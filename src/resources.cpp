@@ -79,7 +79,7 @@ void CL_Resources::releaseMemory(const std::string &_name) {
 	else {
 	       	clReleaseMemObject(*memory_it->second);
 		m_memory.erase(memory_it);
-	       	std::cout << "memory released" <<'\n';
+	 //      	std::cout << "memory released" <<'\n';
 	}
 }
 

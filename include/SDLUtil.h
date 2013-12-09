@@ -14,7 +14,7 @@ struct settings {
 };
 
 SDL_Window *setGLContext(SDL_GLContext*, struct settings*);
-void mainloop(SDL_Window*, void (*init_function)(), void (*update_function)(float), std::function<void()> draw_func);
+void mainloop(SDL_Window*, void (*init_function)(), std::function<void(float)> update_func, std::function<void()> draw_func);
 void gl_info(void);
 void dump_sdl_error( void );
 

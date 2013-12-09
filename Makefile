@@ -2,8 +2,8 @@ PROJECT=program
 CXX=g++
 CC=gcc
 
-OPTS=-Wall -g -c  -std=c++0x
-OPTSC=-Wall -g -c -std=c99
+OPTS=-Wall -g -c -O3  -std=c++0x
+OPTSC=-Wall -g -c -O3 -std=c99
 
 # folder structure
 SRCDIR = src

@@ -3,16 +3,18 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "ray.hpp"
+#include <functional>
 
 using glm::vec3;
 class Light;
 class Scene {
 	public:
 		Scene(std::vector<Light*> _lighst);
-		void update(float _time);
 		void evaluateLights(std::vector<vec3> *_points);
+		std::function<void(float)> update;
 	private:
 		//functions
+		void update_func(float _time);
 		void generateIntervals(RayBatch *_batch) const;
 		void initBuffers(const RayBatch &_batch) const;
 		void analyseIntervals(const RayBatch &_batch, std::vector<vec3> *_pointdata) const;

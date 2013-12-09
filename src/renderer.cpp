@@ -26,21 +26,17 @@ Renderer::~Renderer() {
 }
 
 void Renderer::render_func() {
+
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 	std::vector<vec3> points;
 	m_scene->evaluateLights(&points);
-	std::cout<<points.size()<<'\n';
 	updateGLBuffer(m_vbo, points);
 	glBindVertexArray(m_vao);
-	int colorloc = glGetUniformLocation(3, "cl");
-	glm::vec4 color(0.0, 0.6, 0.6, 1.0);
-	glUniform4fv(colorloc,1, &color[0]);
+	//int colorloc = glGetUniformLocation(3, "cl");
+	//glm::vec4 color(0.0, 0.6, 0.6, 1.0);
+	//glUniform4fv(colorloc,1, &color[0]);
 	glBindVertexArray(m_vao);
-	//GLfloat p[2];
-	//glGetFloatv(GL_POINT_SIZE_RANGE, p);
-	//glPointSize(p[0]);
-	//for(unsigned int i = 0; i < points.size(); i++) {
-	//		std::cout<<glm::to_string(points[i])<<'\n';
-	//	}
+
 	glDrawArrays(GL_POINTS, 0, points.size());
 
 }
