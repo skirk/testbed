@@ -10,8 +10,9 @@ class Light;
 class Scene {
 	public:
 		Scene(std::vector<Light*> _lighst);
-		void evaluateLights(std::vector<vec3> *_points);
+		bool evaluateLight(std::vector<vec3> *_points, unsigned int count);
 		std::function<void(float)> update;
+		std::vector<Light*> m_lights;
 	private:
 		//functions
 		void update_func(float _time);
@@ -20,7 +21,6 @@ class Scene {
 		void analyseIntervals(const RayBatch &_batch, std::vector<vec3> *_pointdata) const;
 
 		//variables
-		std::vector<Light*> m_lights;
 };
 
 #endif

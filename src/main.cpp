@@ -4,8 +4,8 @@
 
 int main(int argc, char* argv[]) {
 
-	unsigned int texture_w = 0;//atoi(argv[1]);
-	unsigned int texture_h = 0;//atoi(argv[2]);
+	unsigned int texture_w = atoi(argv[1]);
+	unsigned int texture_h = atoi(argv[2]);
 	unsigned int intervals = 0;//atoi(argv[3]);
 	unsigned int tiles = 0;//atoi(argv[4]);
 

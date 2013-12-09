@@ -4,7 +4,7 @@ uniform mat4 mv;
 uniform mat3 norm_mat;
 uniform mat4 mvp;
 uniform float deltatime;
-uniform vec4 cl;
+uniform vec3 color;
 
 in vec3 pos;
 out vec4 ocl;
@@ -23,8 +23,7 @@ mat4 rotationMatrix(vec3 ax, float angle)
 
 void main(void) {
 
-
-	ocl =cl;
+	ocl =vec4(color, 1.0);
 
 	mat4 rotation = rotationMatrix(vec3(0.0,1.0, 0.0), deltatime*0.0001);
 	mat4 rotation2 = rotationMatrix(vec3(1.0,0.0, 0.0), deltatime*0.0001);

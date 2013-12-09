@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 #include <functional>
+#include <vector>
 
 struct settings {
 	char *title;
@@ -14,7 +15,7 @@ struct settings {
 };
 
 SDL_Window *setGLContext(SDL_GLContext*, struct settings*);
-void mainloop(SDL_Window*, void (*init_function)(), std::function<void(float)> update_func, std::function<void()> draw_func);
+void mainloop(SDL_Window*, void (*init_function)(), const  std::vector< std::function<void(float)> > &_update_funcs, std::function<void()> draw_func, float*[2]);
 void gl_info(void);
 void dump_sdl_error( void );
 

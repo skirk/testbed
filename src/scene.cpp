@@ -20,26 +20,24 @@ void Scene::update_func(float _time) {
 	}
 }
 
-void Scene::evaluateLights(std::vector<vec3> *_points) {
+bool Scene::evaluateLight(std::vector<vec3> *_points, unsigned int count) {
+	
+	if(count == m_lights.size()) return false;
+
 	CL_Resources &res = CL_Resources::getInstance();
+	Sampler samp(0, m_lights[count]->xDim, 0, m_lights[count]->yDim);
+	std::vector<LightSample> *samples = samp.sampleForEachPixel();
+	RayBatch *batch = m_lights[count]->generateRayBatch(*samples);
+	batch->m_depth = 40;
+	batch->m_iterations = 200;
+	initBuffers(*batch);
+	generateIntervals(batch);
+	analyseIntervals(*batch, _points);
 
-	for(unsigned int i =0; i< m_lights.size(); i++) {
-		Sampler samp(0, m_lights[i]->xDim, 0, m_lights[i]->yDim);
-		std::vector<LightSample> *samples = samp.sampleForEachPixel();
-		RayBatch *batch = m_lights[i]->generateRayBatch(*samples);
-		batch->m_depth = 40;
-		batch->m_iterations = 200;
-		initBuffers(*batch);
-		generateIntervals(batch);
-		analyseIntervals(*batch, _points);
-
-		//int colorloc = glGetUniformLocation(3, "cl");
-		//glm::vec4 color(0.0, 0.6, 0.6, 1.0);
-		//glUniform4fv(colorloc,1, &color[0]);
-		delete batch;
-		res.releaseMemory("result_buf");
-		res.releaseMemory("from_buf");
-	}
+	delete batch;
+	res.releaseMemory("result_buf");
+	res.releaseMemory("from_buf");
+	return true;
 }
 
 void Scene::initBuffers(const RayBatch &_batch) const {

@@ -2,6 +2,7 @@
 #include <iostream>
 #include "renderer.hpp"
 #include "scene.hpp"
+#include "light.hpp"
 #include <GL/gl.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -9,6 +10,7 @@
 #include <glm/ext.hpp>
 using glm::mat4;
 using glm::vec4;
+using glm::vec3;
 
 Renderer::Renderer(Scene *_scene): m_scene(_scene) {
 
@@ -28,17 +30,23 @@ Renderer::~Renderer() {
 void Renderer::render_func() {
 
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+	int i = 0;
 	std::vector<vec3> points;
-	m_scene->evaluateLights(&points);
-	updateGLBuffer(m_vbo, points);
-	glBindVertexArray(m_vao);
-	//int colorloc = glGetUniformLocation(3, "cl");
-	//glm::vec4 color(0.0, 0.6, 0.6, 1.0);
-	//glUniform4fv(colorloc,1, &color[0]);
-	glBindVertexArray(m_vao);
-
-	glDrawArrays(GL_POINTS, 0, points.size());
-
+	while( m_scene->evaluateLight(&points, i)) {
+		i++;
+		/*
+		for(unsigned int i = 0; i < points.size(); i++) {
+			std::cout<<glm::to_string(points[i])<<'\n';
+		}
+		*/
+		int colorloc = glGetUniformLocation(3, "color");
+		vec3 color(1.f-(i*0.5), 1.f-(i*0.2), 1.f-(i*0.4));
+		glUniform3fv(colorloc, 1, &color[0]);
+		updateGLBuffer(m_vbo, points);
+		glBindVertexArray(m_vao);
+		glDrawArrays(GL_POINTS, 0, points.size());
+		points.clear();
+	}
 }
 
 void Renderer::updateGLBuffer(GLuint _buffer, const std::vector<vec3> &_points) {
