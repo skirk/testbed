@@ -10,8 +10,8 @@ struct Ray {
 	public:
 		Ray() {}
 		Ray(const vec3 &_point,const vec3 &_dir);
-		cl_float3 m_point;
-		cl_float3 m_dir;
+		vec3 m_point;
+		vec3 m_dir;
 };
 		
 struct RayBatch {
@@ -20,4 +20,5 @@ struct RayBatch {
 	int m_depth;
 	int m_iterations;
 };
+
 #endif

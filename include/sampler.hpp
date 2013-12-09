@@ -13,7 +13,7 @@ class Sampler {
 		//get _count many samples distributed evenly on normalized aread
 		LightSample *getSamples(int _count);
 		//get a sample for each pixel
-		LightSample *sampleForEachPixel();
+		std::vector<LightSample> *sampleForEachPixel();
 		//divide image into tiles and create a subsampler for each tile and return them
 		void getSubSamplers(std::vector<Sampler*> *_samplers, int num);
 

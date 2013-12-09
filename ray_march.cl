@@ -1,5 +1,5 @@
 
-#define FUNCTION t_shikki
+#define FUNCTION sphere
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
 constant float3 fragboundmin= {-0.5f,-0.5f,-0.5f};
@@ -355,7 +355,7 @@ __kernel void ray_intervals(
 		__global float3 *rays,
 		__private int depth,
 		__private int iterations,
-		__global float *result) {
+		__global float3 *result) {
 
 
 	float3 ray_start = rays[get_global_id(0)*2];
@@ -366,6 +366,9 @@ __kernel void ray_intervals(
 	
 	bool posFound = false; 
 
+	result[get_global_id(0)*2]=ray_start; 
+	result[get_global_id(0)*2+1]=ray_dir; 
+		/*
 	for(int i = 0; i < iterations; i++) {
 		if (posFound)
 		{
@@ -373,15 +376,18 @@ __kernel void ray_intervals(
 		}
 		else
 		{
-			float value = FUNCTION(ray_start+ ray_dir*i*step );
-			if (value > 0) posFound = true;
 
-			result[get_global_id(0)*iterations + i] = value; 
+			//float value = FUNCTION(ray_start+ ray_dir*i*step );
+			//if (value > 0) posFound = true;
+
+			//result[get_global_id(0)*iterations + i] = ray_start; 
 		}
 	}
+		*/
 }
 
 
+/*
 __kernel void ray_march(
 		//	__read_only image2d_t from_buf,
 		//	__read_only image2d_t to_buf,
@@ -410,16 +416,14 @@ __kernel void ray_march(
 			break;
 		}
 		pos += stepsize*dir;
-/*
 		   inBounds = CheckInBounds(pos);
 		   if( !inBounds ) {
 		   break;
 		   }
-*/
 	}
 
 	float4 color;
-	if( i==iterations /*|| !inBounds */) 
+	if( i==iterations ) 
 		color = (float4)(0.0,0.0,0.0,0.0); 
 
 	else {
@@ -443,6 +447,7 @@ __kernel void ray_march(
 }
 
 
+*/
 
 
 

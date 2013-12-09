@@ -78,15 +78,16 @@ void Sampler::getSubSamplers(std::vector<Sampler*> *_samplers, int num) {
 	}
 }
 
-LightSample *Sampler::sampleForEachPixel() {
-	LightSample *array = new LightSample[dx*dy];
+std::vector<LightSample> *Sampler::sampleForEachPixel() {
+	std::vector<LightSample> *samples = new std::vector<LightSample>();
+	samples->resize(dx*dy);
 	float sampleBuf[dx*dy*2];
 	stratifiedSample2D(sampleBuf, dx, dy);
 	for(int i = 0; i < dx*dy; i++) {
-		array[i].imageX = sampleBuf[2*i];
-		array[i].imageY = sampleBuf[2*i+1];
+		(*samples)[i].imageX = sampleBuf[2*i];
+		(*samples)[i].imageY = sampleBuf[2*i+1];
 	}
-	return array;
+	return samples;
 
 }
 

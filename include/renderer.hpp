@@ -3,18 +3,21 @@
 #include <GL/gl.h>
 #include <glm/glm.hpp>
 #include <vector>
+#include <functional>
 
 class Scene;
 
 using glm::vec3;
 class Renderer {
 	public:
-		Renderer();
+		Renderer(Scene *_scene);
 		~Renderer();
-		void render(Scene *_scene);
+		std::function<void()> render;
 	private:
 		void updateGLBuffer(GLuint _buffer, const std::vector<vec3> &_points);
+		void render_func();
 
+		Scene *m_scene;
 		GLuint m_vao;
 		GLuint m_vbo;
 };

@@ -1,12 +1,8 @@
-#ifndef _SDLUTIL_H_
-#define _SDLUTIL_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#pragma once
 
 #include <stdint.h>
 #include <SDL2/SDL.h>
+#include <functional>
 
 struct settings {
 	char *title;
@@ -18,12 +14,7 @@ struct settings {
 };
 
 SDL_Window *setGLContext(SDL_GLContext*, struct settings*);
-void mainloop(SDL_Window*, void (*init_function)(), void (*update_function)(float), void (*draw_function)());
+void mainloop(SDL_Window*, void (*init_function)(), void (*update_function)(float), std::function<void()> draw_func);
 void gl_info(void);
 void dump_sdl_error( void );
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif

@@ -1,16 +1,11 @@
 #include "OpenCLUtil.h"
 
 #include <stdio.h>
-#include <CL/cl_gl.h>
-#include <GL/glx.h>
 
 int errorfunc(char *string, int err) {
 	printf("error code %d\n", err);
 	perror(string);
 	return 1;
-}
-void CL_CALLBACK contexterror(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
-	printf("context error %s\n", errinfo);
 }
 
 int createProgramFromSource(cl_device_id *_device, cl_context *_context, const char *_program_file, cl_program *_program) {

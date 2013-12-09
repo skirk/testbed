@@ -2,7 +2,7 @@ PROJECT=program
 CXX=g++
 CC=gcc
 
-OPTS=-Wall -g -c
+OPTS=-Wall -g -c  -std=c++0x
 OPTSC=-Wall -g -c -std=c99
 
 # folder structure
