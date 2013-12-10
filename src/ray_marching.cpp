@@ -11,6 +11,7 @@
 #include "scene.hpp"
 #include "renderer.hpp"
 #include "light.hpp"
+#include "viewer.hpp"
 
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -48,12 +49,12 @@ void initGL() {
 int ticks;
 void updateLight(mat4 *_pos, float delta) {
 	ticks++;
-	*_pos = glm::rotate(0.0001f * (float)ticks, vec3(0.f, 1.f, 0.f)) * (*_pos);
+	*_pos = glm::rotate(0.001f * (float)ticks, vec3(0.f, 1.f, 0.f)) * (*_pos);
 }
 
 void updateLight2(mat4 *_pos, float delta) {
 	ticks++;
-	*_pos = glm::rotate(0.0001f * (float)ticks, vec3(0.f, 1.f, 0.f)) * (*_pos);
+	*_pos = glm::rotate(0.002f * (float)ticks, vec3(0.f, 1.f, 0.f)) * (*_pos);
 }
 float x;
 float y;
@@ -81,32 +82,23 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 		exit(1);
 	}  
 
-
 	//mat4 position =  glm::rotate(-30.f, vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f);
-
 	GLuint shader = create_shader((char*)"pointcloud.vert", (char*)"pointcloud.frag");
 	std::cout<<shader<<'\n';
-	GLint mv_loc = glGetUniformLocation(shader, "mv");
-	GLint mvp_loc = glGetUniformLocation(shader, "mvp");
 	int timeloc = glGetUniformLocation(shader, "deltatime");
 	int colorloc = glGetUniformLocation(shader, "cl");
 
 	mat4 view = glm::lookAt(vec3(40.0, 20.0, 10.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
 	mat4 model = mat4(1.0);
 	mat4 projection = glm::perspective(70.f, (float)WIDTH/HEIGHT, 0.3f, 100.0f);
-	mat4 mv = view * model;
-	mat4 mvp = projection * mv;
 
-	glUniformMatrix4fv(mvp_loc, 1, GL_FALSE, &mvp[0][0]); 
-	glUniformMatrix4fv(mv_loc, 1, GL_FALSE, &mv[0][0]); 
+	Viewer v(view, projection, model, (int)shader);
 
 	mat4 position =glm::rotate(-30.f, vec3(1.f, 0.f, 0.f)) * glm::scale(20.f, 20.f, 1.f) * glm::translate(0.f, 0.f, 20.f);
 	Light light1(position, _tex_w, _tex_h, &updateLight);
 	light1.color = glm::vec3(0.0, 0.6, 0.6);
-
 	mat4 position2 = glm::rotate(30.f, vec3(1.f, 0.f, 0.f)) * glm::scale(20.f, 20.f, 1.f) * glm::translate(0.f, 0.f, -20.f) * glm::rotate(180.f, vec3(0, 1, 0));
 	Light light2(position2, _tex_w, _tex_h, &updateLight2);
-	light2.color = glm::vec3(0.6, 0.0, 0.0);
 
 	std::vector<Light*> lights; 
 	lights.push_back(&light1);
@@ -114,16 +106,16 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	Scene scene(lights);
 	Renderer r(&scene);;
 
+	
 	std::function<void(float)> func1 = scene.update;
-	std::function<void(float)> func2 = update;
+	std::function<void(float)> func2 = v.update;
 
 	std::vector<std::function<void(float)>> functions;
 	functions.push_back(func1);
 	functions.push_back(func2);
 
-	float* points[2] = {&x, &y};
+	float* points[2] = {&v.x_diff, &v.y_diff};
 	mainloop(win, &initGL, functions, r.render, points);
-
 }
 
 timespec diff(timespec start, timespec end)
