@@ -125,11 +125,11 @@ void mainloop(SDL_Window *_win, void (*init_function)(),const std::vector< std::
 			_update_funcs[i]((float)thisTime);
 		}
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-		std::cout<<"update: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
+		//std::cout<<"update: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 		draw_func();
 		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-		std::cout<<"draw: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
+		//std::cout<<"draw: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
 
 		SDL_GL_SwapWindow(_win);
 	}
