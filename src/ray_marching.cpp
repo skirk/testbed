@@ -20,7 +20,6 @@
 #include <CL/cl_gl.h>
 #include <iostream>
 #include <vector>
-#include <sys/time.h>
 #include <glm/glm.hpp>
 
 #define PROGRAM_FILE "ray_march.cl"
@@ -33,12 +32,6 @@ struct settings sets = {(char*)"Ray_marching",
 
 SDL_GLContext ctx = NULL;
 
-cl_program program;
-
-
-int size, psize;
-
-GLint timeloc, colorloc;
 
 using glm::mat4;
 using glm::vec3;
@@ -56,12 +49,6 @@ void updateLight2(mat4 *_pos, float delta) {
 	ticks++;
 	*_pos = glm::rotate(0.002f * (float)ticks, vec3(0.f, 1.f, 0.f)) * (*_pos);
 }
-float x;
-float y;
-
-void update(float _time) {
-
-}
 
 void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 
@@ -70,6 +57,7 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 
 	CL_Resources &res = CL_Resources::getInstance();
 
+	cl_program program;
 	res.initOpenCLGLContext();
 	createProgramFromSource(&res.device, &res.context,  PROGRAM_FILE, &program);
 	res.addKernel(&program, "ray_intervals");
@@ -84,9 +72,6 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 
 	//mat4 position =  glm::rotate(-30.f, vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f);
 	GLuint shader = create_shader((char*)"pointcloud.vert", (char*)"pointcloud.frag");
-	std::cout<<shader<<'\n';
-	int timeloc = glGetUniformLocation(shader, "deltatime");
-	int colorloc = glGetUniformLocation(shader, "cl");
 
 	mat4 view = glm::lookAt(vec3(40.0, 20.0, 10.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
 	mat4 model = mat4(1.0);
@@ -118,15 +103,3 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	mainloop(win, &initGL, functions, r.render, points);
 }
 
-timespec diff(timespec start, timespec end)
-{
-	timespec temp;
-	if ((end.tv_nsec-start.tv_nsec)<0) {
-		temp.tv_sec = end.tv_sec-start.tv_sec-1;
-		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-	} else {
-		temp.tv_sec = end.tv_sec-start.tv_sec;
-		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-	}
-	return temp;
-}

@@ -19,6 +19,7 @@ class Scene {
 		void generateIntervals(RayBatch *_batch) const;
 		void initBuffers(const RayBatch &_batch) const;
 		void analyseIntervals(const RayBatch &_batch, std::vector<vec3> *_pointdata) const;
+		mutable bool m_init;
 
 		//variables
 };

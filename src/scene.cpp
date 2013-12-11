@@ -4,6 +4,7 @@
 #include "error.hpp"
 #include "sampler.hpp"
 #include <glm/ext.hpp>
+#include "timer.hpp"
 
 #include <CL/cl.h>
 
@@ -12,6 +13,7 @@ Scene::Scene(std::vector<Light*> _ligths) {
 
 	m_lights = _ligths;
 	update = std::bind(&Scene::update_func, this, std::placeholders::_1);
+	m_init = false;
 
 }
 void Scene::update_func(float _time) {
@@ -24,19 +26,35 @@ bool Scene::evaluateLight(std::vector<vec3> *_points, unsigned int count) {
 	
 	if(count == m_lights.size()) return false;
 
-	CL_Resources &res = CL_Resources::getInstance();
+	timespec time1, time2;
+
+//	CL_Resources &res = CL_Resources::getInstance();
+
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+
 	Sampler samp(0, m_lights[count]->xDim, 0, m_lights[count]->yDim);
 	std::vector<LightSample> *samples = samp.sampleForEachPixel();
 	RayBatch *batch = m_lights[count]->generateRayBatch(*samples);
+
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+	std::cout<<"ray generation: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
+
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	batch->m_depth = 40;
 	batch->m_iterations = 200;
 	initBuffers(*batch);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+	std::cout<<"buffer init "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
+
+
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	generateIntervals(batch);
 	analyseIntervals(*batch, _points);
-
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+	std::cout<<"ray generation and analysis "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
 	delete batch;
-	res.releaseMemory("result_buf");
-	res.releaseMemory("from_buf");
+	//res.releaseMemory("result_buf");
+	//res.releaseMemory("from_buf");
 	return true;
 }
 
@@ -46,15 +64,23 @@ void Scene::initBuffers(const RayBatch &_batch) const {
 	int nRays = _batch.m_rays.size();
 	int iterations = _batch.m_iterations;
 	CL_Resources &res = CL_Resources::getInstance();
-	cl_mem *from_buf = new cl_mem(clCreateBuffer(res.context, CL_MEM_READ_ONLY, sizeof(Ray)*nRays, NULL, &err)); 
-	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
-	res.addMemObj(from_buf, "from_buf");
-	err = clEnqueueWriteBuffer(res.queue, *from_buf, CL_FALSE, 0, sizeof(Ray)*nRays, &_batch.m_rays[0],  0, NULL, NULL);
+	if(!m_init) {
+		cl_mem *from_buf = new cl_mem(clCreateBuffer(res.context, CL_MEM_READ_ONLY, sizeof(Ray)*nRays, NULL, &err)); 
+		if(err < 0) interrupt("Unable to Create a Buffer: ", err);
+		res.addMemObj(from_buf, "from_buf");
+		cl_mem *result_buf = new cl_mem(clCreateBuffer(res.context, CL_MEM_READ_ONLY, sizeof(cl_float)*nRays*iterations, NULL, &err)); 
+		if(err < 0) interrupt("Unable to Create a Buffer: ", err);
+		res.addMemObj(result_buf, "result_buf");
+		m_init = true;
+		std::cout<<"buffers initialized\n";
+	}
+
+	err = clEnqueueWriteBuffer(res.queue, *res.getMemObj("from_buf"), CL_FALSE, 0, sizeof(Ray)*nRays, &_batch.m_rays[0],  0, NULL, NULL);
+	
+	//void *mapped_memory;
+	//mapped_memory = clEnqueueMapBuffer(res.queue, *res.getMemObj("from_buf"), CL_FALSE, CL_MAP_WRITE, 0, sizeof(Ray)*nRays, 0, NULL, NULL, &err);
 	if(err < 0) interrupt("Unable to Enqueue Write Buffer: ", err);
-	clFinish(res.queue);
-	cl_mem *result_buf = new cl_mem(clCreateBuffer(res.context, CL_MEM_READ_ONLY, sizeof(cl_float)*nRays*iterations, NULL, &err)); 
-	if(err < 0) interrupt("Unable to Create a Buffer: ", err);
-	res.addMemObj(result_buf, "result_buf");
+	//memcpy(mapped_memory, &_batch.m_rays[0], sizeof(Ray)*nRays);
 }
 
 void Scene::generateIntervals(RayBatch *_batch) const {
@@ -73,15 +99,12 @@ void Scene::generateIntervals(RayBatch *_batch) const {
 	if(err < 0) interrupt("Unable to set kernel argument 2", err);
 	err = clSetKernelArg(*res.getKernel("ray_intervals"), 3, sizeof(cl_mem), res.getMemObj("result_buf"));
 	if(err < 0) interrupt("Unable to set kernel argument 3", err);
-
 	err = clEnqueueNDRangeKernel(res.queue, *res.getKernel("ray_intervals"), 1, NULL, &worksize, NULL, 0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Kernel", err);
-	clFinish(res.queue);
 
 	_batch->m_intervals.resize(worksize*iterations);
 	err = clEnqueueReadBuffer(res.queue, *res.getMemObj("result_buf"), CL_FALSE, 0, sizeof(cl_float)*worksize*iterations, &_batch->m_intervals[0],  0, NULL, NULL);
 	if(err < 0) interrupt("Unable to Enqueue Read Buffer: ", err);
-	clFinish(res.queue);
 }
 
 vec3 convertToVec3(const cl_float3 &_f3) {
@@ -106,5 +129,4 @@ void Scene::analyseIntervals(const RayBatch &_batch, std::vector<vec3> *_pointda
 			}
 		}
 	}
-
 }

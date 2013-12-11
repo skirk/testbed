@@ -1,7 +1,9 @@
 #include "SDLUtil.h"
 #include <GL/gl.h>
 #include "renderer.hpp"
+#include "timer.hpp"
 #include <iostream>
+
 
 
 SDL_Window *setGLContext(SDL_GLContext *_ctx, struct settings *_settings)
@@ -39,6 +41,8 @@ SDL_Window *setGLContext(SDL_GLContext *_ctx, struct settings *_settings)
 
 	return window;
 }
+
+
 
 void mainloop(SDL_Window *_win, void (*init_function)(),const std::vector< std::function<void(float)> > &_update_funcs, std::function<void()> draw_func, float* mouse_diff[2])
 {
@@ -89,13 +93,12 @@ void mainloop(SDL_Window *_win, void (*init_function)(),const std::vector< std::
 		thisTime  = SDL_GetTicks();
 		deltaTime = (float)(thisTime-lastTime) / 1000;
 
-		if(thisTime % 1000 - 970 > 0) {
+		if(thisTime % 1000 - 960 > 0) {
 			fps = (float)1.f/deltaTime;
 			sprintf(title, "FPS %f", fps);
 			SDL_SetWindowTitle(_win, title);
 		}
 		lastTime = thisTime;
-
 
 		while(SDL_PollEvent(&event) == 1) {
 			switch(event.type) {
@@ -115,10 +118,18 @@ void mainloop(SDL_Window *_win, void (*init_function)(),const std::vector< std::
 					break;
 			}
 		}
+		timespec time1, time2;
+
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 		for(unsigned int i = 0; i < _update_funcs.size(); i++) {
 			_update_funcs[i]((float)thisTime);
 		}
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+		std::cout<<"update: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 		draw_func();
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+		std::cout<<"draw: "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<std::endl;
 
 		SDL_GL_SwapWindow(_win);
 	}
