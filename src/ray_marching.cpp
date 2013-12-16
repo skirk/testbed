@@ -73,7 +73,7 @@ void run(int _tex_w, int _tex_h, int _n_inters, int _ntiles) {
 	//mat4 position =  glm::rotate(-30.f, vec3(1, 0, 0))* glm::scale(20.f, 20.f, 1.0f) * glm::translate(0.f, 0.f, 15.f);
 	GLuint shader = create_shader((char*)"pointcloud.vert", (char*)"pointcloud.frag");
 
-	mat4 view = glm::lookAt(vec3(40.0, 20.0, 10.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
+	mat4 view = glm::lookAt(vec3(30.0, 15.0, 10.0), vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
 	mat4 model = mat4(1.0);
 	mat4 projection = glm::perspective(70.f, (float)WIDTH/HEIGHT, 0.3f, 100.0f);
 

@@ -1,4 +1,5 @@
 #include "OpenCLUtil.h"
+#include "timer.hpp"
 
 #include <stdio.h>
 
@@ -31,7 +32,11 @@ int createProgramFromSource(cl_device_id *_device, cl_context *_context, const c
 	free(program_buffer);
 
 	/* Build program */
-	err = clBuildProgram(*_program, 0, NULL, NULL, NULL, NULL);
+	timespec time1, time2;
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+	err = clBuildProgram(*_program, 0, NULL, "-I ./", NULL, NULL);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+	printf("compilation time %d.%d\n", diff(time1,time2).tv_sec, diff(time1,time2).tv_nsec);
 	if(err < 0) {
 
 		/* Find size of log and print to std output */

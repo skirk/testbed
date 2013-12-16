@@ -1,5 +1,8 @@
-#pragma once
+#ifndef _TIMER_H_
+#define _TIMER_H_
 
 #include <time.h>
 
-timespec diff(timespec start, timespec end);
+struct timespec diff(struct timespec start, struct timespec end);
+
+#endif 

@@ -38,21 +38,21 @@ bool Scene::evaluateLight(std::vector<vec3> *_points, unsigned int count) {
 	RayBatch *batch = m_lights[count]->generateRayBatch(*samples);
 
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	std::cout<<i<<" "<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<" ";
+	//std::cout<<i<<" "<<diff(time1,time2).tv_sec<<"."<<diff(time1,time2).tv_nsec<<" ";
 
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	batch->m_depth = 40;
-	batch->m_iterations = 200;
+	batch->m_iterations = 100;
 	initBuffers(*batch);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	std::cout<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<" ";
+	//std::cout<<diff(time1,time2).tv_sec<<"."<<diff(time1,time2).tv_nsec<<" ";
 
 
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	generateIntervals(batch);
 	analyseIntervals(*batch, _points);
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	std::cout<<diff(time1,time2).tv_sec<<":"<<diff(time1,time2).tv_nsec<<"\n";
+	//std::cout<<diff(time1,time2).tv_sec<<"."<<diff(time1,time2).tv_nsec<<"\n";
 	i++;
 	delete batch;
 	//res.releaseMemory("result_buf");

@@ -1,5 +1,4 @@
 #include "timer.hpp"
-#include <iostream>
 
 timespec diff(timespec start, timespec end)
 {
