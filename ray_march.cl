@@ -4,12 +4,23 @@
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
 
+float spheres(float3 pos, __global float *array, int size) {
+
+	float value = 0.0f;
+	value = hfSphere(pos.x, pos.y, pos.z, array[0], array[1], array[2], array[3]);
+
+	for(int i = 1; i < size; i++) {
+		value = max(value, hfSphere(pos.x, pos.y, pos.z, array[i*4], array[i*4+1], array[i*4+2], array[i*4+3]));
+	}
+	return value; 
+}
+
 __kernel void ray_intervals(
 		__global float *points,
 		__global float *result) {
 
 	float3 point = (float3)(points[get_global_id(0)*3], points[get_global_id(0)*3+1], points[get_global_id(0)*3+2]);
-	result[get_global_id(0)] = FUNCTION(point);
+	result[get_global_id(0)] = spheres(point, points, get_global_size(0));
 }
 
 /*
