@@ -333,7 +333,23 @@ float noisesphere(float3 pos)
 	float SS = Serx*Sery*Serz;
 	return sphere+SS;
 }
-
+float t_mitchell(float3 pos)
+{
+	float x = pos.x;
+	float y = pos.y;
+	float z = pos.z;
+	float param = 0.0;
+	float x1 = x;
+	float y1 = y;
+	float z1 = z;
+	float x2 = x1*x1;
+	float y2 = y1*y1;
+	float z2 = z1*z1;
+	float p1 = (x2+y2+z2)*20;
+	float p2 = (x2*x2+(y2+z2)*(y2+z2))*4;
+	float p3 = x2*(y2+z2)*17;
+	return  p1 - p2 - p3 - 17;
+}
 /*
 float3 getGradient(float3 pos)
 {

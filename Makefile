@@ -2,7 +2,7 @@ PROJ=testbed
 
 CC=gcc
 
-CFLAGS=-std=c99 -Wall -DUNIX -g -DDEBUG
+CFLAGS=-std=gnu99 -Wall -g -DDEBUG -lrt
 
 # Check for 32-bit vs 64-bit
 PROC_TYPE = $(strip $(shell uname -m | grep 64))
