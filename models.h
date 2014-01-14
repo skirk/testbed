@@ -338,7 +338,6 @@ float t_mitchell(float3 pos)
 	float x = pos.x;
 	float y = pos.y;
 	float z = pos.z;
-	float param = 0.0;
 	float x1 = x;
 	float y1 = y;
 	float z1 = z;
@@ -350,6 +349,67 @@ float t_mitchell(float3 pos)
 	float p3 = x2*(y2+z2)*17;
 	return  p1 - p2 - p3 - 17;
 }
+float t_decocube(float3 pos)
+{
+	float x = pos.x;
+	float y = pos.y;
+	float z = pos.z;
+	float xy = x*x + y*y - 0.82;
+	float yz = y*y + z*z - 0.82;
+	float xz = x*x + z*z - 0.82;
+	float xx = x*x - 1;
+	float zz = z*z - 1;
+	float yy = y*y - 1;
+	return 0.02 - (xy*xy + zz*zz)*(yz*yz + xx*xx)*(xz*xz + yy*yy);
+}
+float t_spheremicro(float3 pos)
+{
+	float x = pos.x;
+	float y = pos.y;
+	float z = pos.z;
+	float sphere = 1.0 - x*x - y*y - z*z;
+	float offsp = sphere - 0.15; //offset
+	float sp_shell = r_subtraction(sphere, offsp);
+
+	float scale = 20;
+	float tsin = 0.9;
+	float xslabs = sin(x*scale) - tsin;
+	float yslabs = sin(y*scale) - tsin;
+	float zslabs = sin(z*scale) - tsin;
+	float xrods = r_intersection(yslabs, zslabs);
+	float yrods = r_intersection(xslabs, zslabs);
+	float zrods = r_intersection(xslabs, yslabs);
+	float grid = r_union(r_union(xrods, yrods), zrods);
+	float grid_tr = r_intersection(sphere, grid);
+	float gsphere = r_union(grid_tr, sp_shell);
+
+	return r_intersection(gsphere, -z);
+}
+float t_blendcsg(float3 pos)
+{
+	float x = pos.x;
+	float y = pos.y;
+	float z = pos.z;
+	float e = 3;
+	float x1 = x*5.;
+	float y1 = y*5.;
+	float z1 = z*5.;
+
+	float x2 = (x1-5)/e;
+	float x3 = (x1+3)/e;
+	float y2 = (y1+3)/e;
+	float z2 = z1/e;
+
+	float sp1 = 1 - pow(x2,4) - pow(y2,4) - pow(z2,4);
+	float sp2 = 1 - pow(x3,4) - pow(y2,4) - pow(z2,4);
+	float blend1 = hfBlendUni(sp1, sp2, 5, 2, 2);
+
+	float sp3 = hfSphere(x1, y1, z1, 6, 6, 6, 4);
+	float pl = 6-x1;
+	float blend2 = hfBlendInt(sp3, pl, -30, 1, 1);
+	return r_union(blend1, blend2);
+}
+
 /*
 float3 getGradient(float3 pos)
 {

@@ -63,7 +63,7 @@ struct timespec diff(struct timespec start, struct timespec end)
 
 void printtime(struct timespec spec) {
 
-	printf("%lu s, %lu ns\n", spec.tv_sec, spec.tv_nsec);
+	printf("%lu.%09lu (s:ns)\n", spec.tv_sec, spec.tv_nsec);
 
 }
 /* Create program from a file and compile it */
@@ -103,9 +103,6 @@ cl_program build_program(cl_context ctx, cl_device_id dev,
 	struct timespec time1, time2;
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	err = clBuildProgram(program, 0, NULL, options, NULL, NULL);
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	printf("compilation ");
-	printtime(diff(time1, time2));
 	if(err < 0) {
 
 		/* Find size of log and print to std output */
@@ -119,6 +116,9 @@ cl_program build_program(cl_context ctx, cl_device_id dev,
 		free(program_log);
 		exit(1);
 	}
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+	printf("compilation ");
+	printtime(diff(time1, time2));
 
 	return program;
 }
