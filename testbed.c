@@ -63,7 +63,7 @@ struct timespec diff(struct timespec start, struct timespec end)
 
 void printtime(struct timespec spec) {
 
-	printf("%lu.%09lu (s:ns)\n", spec.tv_sec, spec.tv_nsec);
+	printf(" %lu.%09lu ", spec.tv_sec, spec.tv_nsec);
 
 }
 /* Create program from a file and compile it */
@@ -117,8 +117,8 @@ cl_program build_program(cl_context ctx, cl_device_id dev,
 		exit(1);
 	}
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	printf("compilation ");
-	printtime(diff(time1, time2));
+	//printf("compilation ");
+	//printtime(diff(time1, time2));
 
 	return program;
 }
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
 	unsigned int nBatches = atoi(argv[2]);
 
 	//force compilation = no caching
-	setenv("CUDA_CACHE_DISABLE", "1", 1);
+	//setenv("CUDA_CACHE_DISABLE", "1", 1);
 
 	/* OpenCL data structures */
 	cl_device_id device;
