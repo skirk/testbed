@@ -1,8 +1,8 @@
 PROJ=testbed
 
-CC=gcc
+CC=g++
 
-CFLAGS=-std=gnu99 -Wall -g -DDEBUG -lrt
+CFLAGS= -Wall -g -DDEBUG -lrt
 
 # Check for 32-bit vs 64-bit
 PROC_TYPE = $(strip $(shell uname -m | grep 64))
@@ -18,7 +18,7 @@ CFLAGS+=-m64
 
 INC_DIRS=/opt/cuda/include/
 
-$(PROJ): $(PROJ).c
+$(PROJ): $(PROJ).cpp
 	$(CC) $(CFLAGS) -o $@ $^ $(INC_DIRS:%=-I%) $(LIB_DIRS:%=-L%) $(LIBS)
 
 .PHONY: clean
