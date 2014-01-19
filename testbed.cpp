@@ -237,7 +237,6 @@ void analyseIntervals(
 
 
 
-
 void evaluateRays(
 		const std::vector<cl_float3> &rays,
 		cl_float3 direction, 
@@ -322,14 +321,6 @@ int main(int argc, char* argv[]) {
 	direction.y = 0.f;
 	direction.z = 1.f;
 
-	//ray_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(rays[0])*rays.size(), NULL, &err);
-	//if(err < 0) {
-	//	perror("Couldn't create a memory object");
-	//	exit(1);   
-	//};
-	//clEnqueueWriteBuffer(queue, ray_buf, CL_FALSE, 0, sizeof(rays[0])*rays.size(), &rays[0], 0, NULL, NULL);
-
-
 	std::vector<cl_float3> points;
 	evaluateRays(rays, direction, nsteps, 2.f, &points);
 
@@ -338,70 +329,12 @@ int main(int argc, char* argv[]) {
 	}
 
 
-	/*
-	   struct timespec time1, time2;
-	   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-	   for(unsigned int i = 0; i<nBatches; i++) {
 
-	   cl_buffer_region region; 
-	   region.size=   batchsize*3*sizeof(float);
-	   region.origin= batchsize*3*sizeof(float)*i;
-	   sub_buf = clCreateSubBuffer( sample_buf, CL_MEM_READ_ONLY, CL_BUFFER_CREATE_TYPE_REGION, &region, &err);
-	   if(err < 0) {
-	   printf("Couldn't create buffer 1, %d\n", err);
-	   exit(1);   
-	   };
-
-	   cl_buffer_region region2; 
-	   region2.size=   batchsize*sizeof(float);
-	   region2.origin= batchsize*sizeof(float)*i;
-//printf("%zu\n", region2.origin);
-//printf("%zu\n", region2.size);
-sub_buf2 = clCreateSubBuffer(result_buf, CL_MEM_WRITE_ONLY, CL_BUFFER_CREATE_TYPE_REGION, &region2, &err);
-if(err < 0) {
-printf("Couldn't create buffer 2, %d\n", err);
-exit(1);   
-};
-
-err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &sub_buf);
-if(err < 0) {
-perror("Couldn't set a kernel argument");
-exit(1);   
-};
-err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &sub_buf2);
-if(err < 0) {
-perror("Couldn't set a kernel argument");
-exit(1);   
-};
-size_t worksize = batchsize;
-err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &worksize, NULL, 0, NULL, NULL);
-if(err < 0) {
-perror("Couldn't enqueue the kernel");
-exit(1);   
-}
-clReleaseMemObject(sub_buf);
-clReleaseMemObject(sub_buf2);
-}
-*/
-/* Enqueue kernel */
-
-/* Read and print the result */
-
-/*
-   err = clEnqueueReadBuffer(queue, result_buf, CL_TRUE, 0, 
-   sizeof(results), &results, 0, NULL, NULL);
-   if(err < 0) {
-   perror("Couldn't read the output buffer");
-   exit(1);   
-   }
-   */
-//printf("The kernel result is %f\n", result);   
-
-/* Deallocate resources */
-clReleaseKernel(kernel);
-clReleaseCommandQueue(queue);
-clReleaseProgram(program);
-clReleaseContext(context);
-return 0;
+	/* Deallocate resources */
+	clReleaseKernel(kernel);
+	clReleaseCommandQueue(queue);
+	clReleaseProgram(program);
+	clReleaseContext(context);
+	return 0;
 }
 
