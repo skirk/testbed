@@ -24,7 +24,7 @@ cl_command_queue queue;
 cl_program program;;
 cl_kernel kernel;
 cl_int err;
-float EPSILON = 0.02;
+float EPSILON = 0.05;
 
 cl_mem ray_buf, interval_buf;
 
@@ -124,8 +124,6 @@ cl_program build_program(cl_context ctx, cl_device_id dev,
 		exit(1);
 	}
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	//printf("compilation ");
-	//printtime(diff(time1, time2));
 
 	return program;
 }
@@ -149,6 +147,14 @@ cl_float3 operator+(const cl_float3 lhs, cl_float3 rhs) {
 	temp.s[1] = lhs.s[1]+rhs.s[1];
 	temp.s[2] = lhs.s[2]+rhs.s[2];
 	return temp;
+}
+float distance(cl_float3 lhs, cl_float3 rhs) {
+
+	float x=lhs.x-rhs.x;
+	float y=lhs.y-rhs.y;
+	float z=lhs.z-rhs.z;
+
+	return sqrt((x*x + y*y + z*z));
 }
 void executeIntervals(const std::vector<cl_float3> &rays, float *intervals, cl_float3 direction, int steps, float depth) {
 
@@ -195,6 +201,7 @@ void executeIntervals(const std::vector<cl_float3> &rays, float *intervals, cl_f
 	size_t worksizes[2] = { rays.size(), steps };
 	err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, worksizes, NULL, 0, NULL, NULL);
 
+	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, interval_buf, CL_TRUE, 0, sizeof(float)*rays.size()*steps, intervals, 0, NULL, NULL);
 	if(err < 0) {
 		printf("Couldn't Read Buffer %d\n", err);
@@ -215,16 +222,20 @@ void analyseIntervals(
 		std::vector<cl_float3> *surface_points 
 		) {
 
+	std::cout<<"analysing "<<depth<<" "<<ray_start.size()<<'\n';
 	for(unsigned int i = 0; i<ray_start.size(); i++) {
 		for(int j = 0; j<nsteps; j++) {
-			if(intervals[i*nsteps+j] * intervals[i*nsteps+j+1] < 0 ) {
+			if( intervals[i*nsteps+j] * intervals[i*nsteps+j+1] <= 0 ) {
 
 				cl_float3 interval_start;
 				float stepsize = depth/(float)nsteps; 
 				interval_start = ray_start[i]+direction*stepsize*j;
+				cl_float3 interval_end = interval_start+direction*stepsize;
 
-				if( fabs(intervals[i*nsteps+j]) - fabs(intervals[i*nsteps+j+1]) < EPSILON && fabs(intervals[i*nsteps+j]) - fabs(intervals[i*nsteps+j+1]) > -EPSILON ) { 
-					cl_float3 interval_end = interval_start+direction*stepsize;
+				//std::cout<<interval_start.x<<" "<<interval_start.y<<" "<<interval_start.z<<'\n';
+				if( distance(interval_start, interval_end) < EPSILON) {
+
+					//std::cout<<intervals[i*nsteps+j]<<" "<< intervals[i*nsteps+j+1]<<'\n';
 					cl_float3 end_point = (interval_start+interval_end)/2;
 					surface_points->push_back(end_point);
 					continue;
@@ -247,12 +258,18 @@ void evaluateRays(
 	if (rays.empty())
 		return;
 
-	float intervals[rays.size()*steps];
 	std::vector<cl_float3> result_rays;
 
+	float *intervals = (float*)malloc(sizeof(float)*rays.size()*steps);
 	executeIntervals(rays, intervals, direction, steps, depth);
+	/*
+	   for(int i=0; i < rays.size()*steps; i++) {
+	   std::cout<<intervals[i]<<'\n';
+	   }
+	   */
 	analyseIntervals(rays, direction, steps, depth, intervals, &result_rays, surface_points);
 	evaluateRays(result_rays, direction, steps, depth/(float)steps, surface_points);
+	free(intervals);
 }
 
 
@@ -304,7 +321,6 @@ int main(int argc, char* argv[]) {
 	};
 
 
-
 	std::vector<cl_float3> rays; 
 	for(unsigned int i =0; i<xres; i++) {
 		for(unsigned int j =0; j<yres; j++) {
@@ -312,7 +328,7 @@ int main(int argc, char* argv[]) {
 			temp.x = i/((float)xres-1)*2-1;
 			temp.y = j/((float)yres-1)*2-1;
 			temp.z = -1.f;
-			std::cout<<temp.x<<" "<<temp.y<<" "<<temp.z<<'\n';
+			//std::cout<<temp.x<<" "<<temp.y<<" "<<temp.z<<'\n';
 			rays.push_back(temp);
 		}
 	}
@@ -324,11 +340,11 @@ int main(int argc, char* argv[]) {
 	std::vector<cl_float3> points;
 	evaluateRays(rays, direction, nsteps, 2.f, &points);
 
+
+	std::cout<<points.size()<<'\n';
 	for(unsigned int i = 0; i < points.size(); i++) {
-		std::cout<<points[i].x<<" "<<points[i].y<<" "<<points[i].z<<'\n';
+		std::cout<<"final_point " <<points[i].x<<" "<<points[i].y<<" "<<points[i].z<<'\n';
 	}
-
-
 
 	/* Deallocate resources */
 	clReleaseKernel(kernel);

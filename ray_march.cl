@@ -1,7 +1,6 @@
-#define FUNCTION sphere
+#define FUNCTION t_mitchell
 
 #include "models.h"
-
 
 __kernel void evaluate_intervals(
 		__global float3 *in_ray_start, 
@@ -12,7 +11,7 @@ __kernel void evaluate_intervals(
 
 	float3 ray_start = in_ray_start[get_global_id(0)];
 
-	float step=depth/nsteps;
+	float step=depth/(float)nsteps;
 	direction = normalize(direction);
 
 	float value = FUNCTION(ray_start + direction*step*get_global_id(1));
