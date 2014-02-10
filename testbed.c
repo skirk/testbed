@@ -216,9 +216,9 @@ int main(int argc, char* argv[]) {
 	int batchsize = samples/nBatches;
 
 	struct timespec time1, time2;
-	struct timespec buffer1;
-	buffer1.tv_sec = 0;
-	buffer1.tv_nsec = 0;
+	//struct timespec buffer1;
+	//buffer1.tv_sec = 0;
+	//buffer1.tv_nsec = 0;
 
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 	for(int i = 0; i<nBatches; i++) {
@@ -226,16 +226,16 @@ int main(int argc, char* argv[]) {
 		cl_buffer_region region; 
 		region.size=   batchsize*3*sizeof(float);
 		region.origin= batchsize*3*sizeof(float)*i;
-		struct timespec buffer2, buffer3;
+		//struct timespec buffer2, buffer3;
 
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &buffer2);
+		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &buffer2);
 		sub_buf = clCreateSubBuffer( sample_buf, CL_MEM_READ_ONLY, CL_BUFFER_CREATE_TYPE_REGION, &region, &err);
 		if(err < 0) {
 			printf("Couldn't create buffer 1, %d\n", err);
 			exit(1);   
 		};
-		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &buffer3);
-		buffer1 = add(buffer1, diff(buffer2, buffer3));
+		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &buffer3);
+		//buffer1 = add(buffer1, diff(buffer2, buffer3));
 
 		cl_buffer_region region2; 
 		region2.size=   batchsize*sizeof(float);
@@ -268,9 +268,9 @@ int main(int argc, char* argv[]) {
 		clReleaseMemObject(sub_buf2);
 	}
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	//printtime(diff(time1, time2));
+	printtime(diff(time1, time2));
 	//printf("buffer time ");
-	printtime(buffer1);
+	//printtime(buffer1);
 	/* Enqueue kernel */
 
 	/* Read and print the result */
