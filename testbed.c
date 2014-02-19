@@ -193,55 +193,58 @@ int main(int argc, char* argv[]) {
 
 	//3 floats describe one point
 
-	float   array[samples*3];
-	float results[samples];
+	float *array = malloc(sizeof(float)*samples*3);
+	//float *results = malloc(sizeof(float)*samples);
 
 	for(int i =0; i<samples*3; i++) {
 		array[i] = rand() %5; 
 	}
 
-	sample_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(array), NULL, &err);
+	sample_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(float)*samples*3, NULL, &err);
 	if(err < 0) {
 		perror("Couldn't create a memory object");
 		exit(1);   
 	};
-	clEnqueueWriteBuffer(queue, sample_buf, CL_FALSE, 0, sizeof(array), array, 0, NULL, NULL);
+	clEnqueueWriteBuffer(queue, sample_buf, CL_FALSE, 0, sizeof(float)*samples*3, array, 0, NULL, NULL);
 
 	result_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 
-			sizeof(results), NULL, &err);
+			sizeof(float)*samples, NULL, &err);
 	if(err < 0) {
 		perror("Couldn't create a memory object");
 		exit(1);   
 	};
-	int batchsize = samples/nBatches;
 
-	struct timespec time1, time2;
-	//struct timespec buffer1;
-	//buffer1.tv_sec = 0;
-	//buffer1.tv_nsec = 0;
+	struct timespec batchtime1, batchtime2, overalltime1, overalltime2;
 
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+	//batch configuration
+	int batchconfig[nBatches];
+	srand( time( NULL ) );
+	for (int i = 0; i < nBatches; i+=2) {
+		int value1= rand() % samples/nBatches*2+1;
+		int value2= samples/nBatches*2 - value1;
+		batchconfig[i] =   value1;
+		batchconfig[i+1] = value2;
+	}
+
+	int location = 0;
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &overalltime1);
 	for(int i = 0; i<nBatches; i++) {
 
-		cl_buffer_region region; 
-		region.size=   batchsize*3*sizeof(float);
-		region.origin= batchsize*3*sizeof(float)*i;
-		//struct timespec buffer2, buffer3;
+		cl_buffer_region region , region2;
+		region.size=   batchconfig[i]*3*sizeof(float);
+		region.origin= location*3*sizeof(float);
 
-		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &buffer2);
+		region2.size=   batchconfig[i]*sizeof(float);
+		region2.origin= location*sizeof(float);
+
+		location += batchconfig[i];
+		clFinish(queue);
+
 		sub_buf = clCreateSubBuffer( sample_buf, CL_MEM_READ_ONLY, CL_BUFFER_CREATE_TYPE_REGION, &region, &err);
 		if(err < 0) {
 			printf("Couldn't create buffer 1, %d\n", err);
 			exit(1);   
 		};
-		//clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &buffer3);
-		//buffer1 = add(buffer1, diff(buffer2, buffer3));
-
-		cl_buffer_region region2; 
-		region2.size=   batchsize*sizeof(float);
-		region2.origin= batchsize*sizeof(float)*i;
-		//printf("%zu\n", region2.origin);
-		//printf("%zu\n", region2.size);
 		sub_buf2 = clCreateSubBuffer(result_buf, CL_MEM_WRITE_ONLY, CL_BUFFER_CREATE_TYPE_REGION, &region2, &err);
 		if(err < 0) {
 			printf("Couldn't create buffer 2, %d\n", err);
@@ -258,29 +261,49 @@ int main(int argc, char* argv[]) {
 			perror("Couldn't set a kernel argument");
 			exit(1);   
 		};
-		size_t worksize = batchsize;
+		size_t worksize = batchconfig[i];
+
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &batchtime1);
 		err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &worksize, NULL, 0, NULL, NULL);
 		if(err < 0) {
 			perror("Couldn't enqueue the kernel");
 			exit(1);   
 		}
-		clReleaseMemObject(sub_buf);
-		clReleaseMemObject(sub_buf2);
+		clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &batchtime2);
+		printf("%d ", batchconfig[i]);
+		printtime(diff(batchtime1, batchtime2));
+		printf("\n");
+		err = clFinish(queue);
+		if(err < 0) {
+			printf("Problem finishing");
+			exit(1);   
+		}
+		err = clReleaseMemObject(sub_buf);
+		if(err < 0) {
+			printf("Couldn't ReleaseMemObject");
+			exit(1);   
+		}
+		err = clReleaseMemObject(sub_buf2);
+		if(err < 0) {
+			printf("Couldn't ReleaseMemObject");
+			exit(1);   
+		}
 	}
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-	printtime(diff(time1, time2));
-	//printf("buffer time ");
-	//printtime(buffer1);
-	/* Enqueue kernel */
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &overalltime2);
 
-	/* Read and print the result */
+	printf("overall time ");
+	printtime(diff(overalltime1, overalltime2));
+	printf("\n");
 
+
+	/*
 	err = clEnqueueReadBuffer(queue, result_buf, CL_TRUE, 0, 
 			sizeof(results), &results, 0, NULL, NULL);
 	if(err < 0) {
-		perror("Couldn't read the output buffer");
+		printf("Couldn't read the output buffer %d", err);
 		exit(1);   
 	}
+	*/
 	//printf("The kernel result is %f\n", result);   
 
 	/* Deallocate resources */
