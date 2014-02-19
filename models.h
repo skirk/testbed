@@ -43,6 +43,7 @@ float maxunion(float f1, float f2) {
 
 	return max(f1, f2);
 }
+
 float r_intersection(const float a, const float b)
 {
 	return a+b-sqrt(a*a+b*b);
@@ -411,6 +412,7 @@ float t_blendcsg(float3 pos)
 }
 
 /*
+
 float3 getGradient(float3 pos)
 {
 	float delta = 0.001f;
@@ -1982,10 +1984,3 @@ float plane90 = r_int(plane92, -(-4.86806) - x*(0.656509) - y*(0.371471) - z*(0.
 float plane72 = r_int(plane90, -(-4.86806) - x*(0.656509) - y*(0.371471) - z*(-0.656509));
 	return plane72;
 }
-
-
-
-
-
-
-
