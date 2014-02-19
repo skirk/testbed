@@ -270,10 +270,9 @@ int main(int argc, char* argv[]) {
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
 	printtime(diff(time1, time2));
 	//printf("buffer time ");
-	//printtime(buffer1);
+	//printtime(buffer2);
 	/* Enqueue kernel */
 
-	/* Read and print the result */
 
 	err = clEnqueueReadBuffer(queue, result_buf, CL_TRUE, 0, 
 			sizeof(results), &results, 0, NULL, NULL);
